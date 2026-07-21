@@ -1,0 +1,4 @@
+interface:
+  display_name: "代码思路指导"
+  short_description: "只审阅项目并提供实现思路、伪代码与学习建议，不代写业务代码"
+  default_prompt: "使用 $code-guidance-only 审阅我的实现，并只提供修改思路和伪代码。"

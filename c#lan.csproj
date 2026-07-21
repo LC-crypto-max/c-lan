@@ -11,6 +11,13 @@
 
   <ItemGroup>
     <Folder Include="Services\" />
+    <Folder Include="Data\" />
+    <Folder Include="Configuration\" />
+    <Folder Include="Utilities\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Data.Common" Version="4.3.0" />
   </ItemGroup>
 
 </Project>
