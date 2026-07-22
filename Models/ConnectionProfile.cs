@@ -9,10 +9,10 @@ namespace c_lan.Models
         public String ConnectionName { get; set; }
         public String DatabaseType { get; set; }
         public String Host {  get; set; }
-        public int Port { get; set; }
+        public uint Port { get; set; }
         public String? DefaultDatabase { get; set; }
         public bool SavePassword { get; set; } = false;
-        public int ConnectionTimeout { get; set; } = 10;
+        public uint ConnectionTimeout { get; set; } = 10;
         public String? CharacterSet { get; set; }
         public String SSLmode { get; set; }
         public String UserName { get; set; }
