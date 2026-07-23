@@ -6,6 +6,9 @@ using MySqlConnector;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.ComponentModel;
+using System.Windows.Forms.VisualStyles;
+using System.Data.SqlTypes;
 
 namespace c_lan.Services
 {
@@ -79,10 +82,22 @@ namespace c_lan.Services
 
             return builder.ToString();
         }
-        //public async Task<ConnectionProfile> ReadallConfigurationAsync(CancellationToken cancellationToken)
-        //{
+        public async Task<ConnectionProfile> ReadallConfigurationAsync(CancellationToken cancellationToken)
+        {
 
-        //}
+        }
+
+        public async bool SaveConnectionConfigurationAsync(
+            ConnectionProfile profile, bool keeporNot, CancellationToken token)
+        {
+
+        }
+
+        public async bool bool DeleteConnectionConfigurationAsync(
+            int configid, CancellationToken token)
+        {
+
+        }
 
     }
 }
