@@ -3,6 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using MySqlConnector;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace c_lan.Services
 {
@@ -12,20 +15,47 @@ namespace c_lan.Services
             ConnectionProfile profile,CancellationToken cancellationToken
             )
         {
-            if(profile == null || profile.Host == null || 0 >= profile.Port || profile.Port >=65535 || profile.ConnectionTimeout <= 0) { return false; }
+            if(profile == null || String.IsNullOrWhiteSpace(profile.Host) || 0 >= profile.Port || profile.Port >65535 || profile.ConnectionTimeout <= 0) { return false; }
 
             String connectionstring = BuildConnectionString(profile);
 
-            //使用usinglaugh管理连接
+            //使用usinglauguaue管理连接
 
             using var conn = new MySqlConnection(connectionstring);
 
-            try
-            {
-                await conn.OpenAsync();
-                Console.WriteLine("连接成功");
+                try
+                {
+                    
+                    await conn.OpenAsync(cancellationToken);
 
-            }
+                    Debug.WriteLine("连接成功");
+
+                    return true;
+                }
+                catch (OperationCanceledException cancel)
+                {
+
+                    Debug.WriteLine("操作被取消");
+
+                    return false;
+                }
+
+                catch (MySqlException sqlerror)
+                {
+                    Debug.WriteLine("sql错误，请检查连接、账号、网络等问题");
+
+                    Debug.WriteLine(sqlerror.Message);
+
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("发生未知错误");
+
+                    Debug.WriteLine(ex.Message);
+
+                    return false;
+                }
 
         }
 
@@ -49,5 +79,10 @@ namespace c_lan.Services
 
             return builder.ToString();
         }
+        //public async Task<ConnectionProfile> ReadallConfigurationAsync(CancellationToken cancellationToken)
+        //{
+
+        //}
+
     }
 }
