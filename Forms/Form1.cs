@@ -90,7 +90,7 @@ namespace c_lan
                 {
                     MessageBox.Show("连接失败");
                 }
-
+                
             }
             catch (Exception ex)
             {
@@ -98,18 +98,16 @@ namespace c_lan
 
                 MessageBox.Show(ex.Message, "是本次错误原因", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            finally
-            {
+            finally{
                 TestButton.Enabled = true;
                 TestButton.Text = "测试连接";
 
-                if (_cancellationTokenSource == cancellation)
-                {
-
+                if(_cancellationTokenSource == cancellation){
                     _cancellationTokenSource.Dispose();
                 }
 
             }
         }
+        
     }
 }
