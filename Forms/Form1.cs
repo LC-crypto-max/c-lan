@@ -69,6 +69,9 @@ namespace c_lan
 
                 {
                     ConnectionName = ConnectionnameText.Text,
+                    // 当前窗体只提供 MySQL 功能，因此创建配置时明确写入 MySQL 类型。
+                    // 将来加入数据库类型下拉框后，这里应改为读取用户选中的枚举值。
+                    DatabaseType = DatabaseType.MySQL,
                     Host = HostText.Text,
                     Port = uint.TryParse(PortText.Text, out uint parsedPort) ? parsedPort : 0,
                     UserName = UserText.Text,

@@ -4,7 +4,8 @@ using System.Text;
 
 namespace c_lan.Configuration
 {
-    internal class ConnectionProfileStore
+    public class ConnectionProfileStore
     {
+        
     }
 }

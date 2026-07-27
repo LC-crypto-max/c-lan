@@ -62,7 +62,7 @@ namespace c_lan.Services
 
         }
 
-        private String BuildConnectionString(ConnectionProfile profile)
+        public static String BuildConnectionString(ConnectionProfile profile)
         {
             MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder();
 
@@ -82,9 +82,10 @@ namespace c_lan.Services
 
             return builder.ToString();
         }
-        public async Task<ConnectionProfile> ReadallConfigurationAsync(CancellationToken cancellationToken)
+        public async Task<ConnectionProfile> ReadallConfigurationAsync(
+            CancellationToken cancellationToken)
         {
-
+            
         }
 
         public async bool SaveConnectionConfigurationAsync(
@@ -93,7 +94,7 @@ namespace c_lan.Services
 
         }
 
-        public async bool bool DeleteConnectionConfigurationAsync(
+        public async bool DeleteConnectionConfigurationAsync(
             int configid, CancellationToken token)
         {
 

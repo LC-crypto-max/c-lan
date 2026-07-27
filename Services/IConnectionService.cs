@@ -13,12 +13,12 @@ namespace c_lan.Services
             ConnectionProfile profile,
             CancellationToken cancellationToken);
 
-        Task<ConnectionProfile> ReadallConfigurationAsync(CancellationToken cancellationToken);
+        Task<List<ConnectionProfile>> ReadallConfigurationAsync(CancellationToken cancellationToken);
 
-        bool SaveConnectionConfigurationAsync(
+        Task<bool> SaveConnectionConfigurationAsync(
             ConnectionProfile profile, bool keeporNot, CancellationToken token);
 
-        bool DeleteConnectionConfigurationAsync(
+        Task<bool> DeleteConnectionConfigurationAsync(
             int configid, CancellationToken token);
     }
 }
