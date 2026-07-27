@@ -82,23 +82,22 @@ namespace c_lan.Services
 
             return builder.ToString();
         }
-        public async Task<ConnectionProfile> ReadallConfigurationAsync(
+/*        public async Task<ConnectionProfile> ReadallConfigurationAsync(
             CancellationToken cancellationToken)
         {
             
         }
 
-        public async bool SaveConnectionConfigurationAsync(
+        public async Task<bool> SaveConnectionConfigurationAsync(
             ConnectionProfile profile, bool keeporNot, CancellationToken token)
         {
 
         }
 
-        public async bool DeleteConnectionConfigurationAsync(
+        public async Task<bool> DeleteConnectionConfigurationAsync(
             int configid, CancellationToken token)
         {
 
-        }
-
+        }*/
     }
 }

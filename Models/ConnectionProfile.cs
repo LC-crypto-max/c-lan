@@ -24,6 +24,9 @@ namespace c_lan.Models
         {
             return !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password);
         }
-
+        public bool IsValid()
+        {
+            return !String.IsNullOrWhiteSpace(ConnectionName) && !String.IsNullOrWhiteSpace(Host) && Port > 0 && Port<65535 && !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password);
+        }
     }
 }
