@@ -82,7 +82,7 @@ namespace c_lan.Services
 
             return builder.ToString();
         }
-/*        public async Task<ConnectionProfile> ReadallConfigurationAsync(
+        public async Task<ConnectionProfile> ReadallConfigurationAsync(
             CancellationToken cancellationToken)
         {
             
@@ -98,6 +98,6 @@ namespace c_lan.Services
             int configid, CancellationToken token)
         {
 
-        }*/
+        }
     }
 }
