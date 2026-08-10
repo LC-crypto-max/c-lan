@@ -7,15 +7,15 @@ namespace c_lan
 {
     public partial class Form1 : Form
     {
-        private ConnectionService _connectionService;
+        private IConnectionService _connectionService;
         private ConnectionProfile _connectionProfile;
         private CancellationTokenSource? _cancellationTokenSource;
 
-        public Form1()
+        public Form1(IConnectionService connectionService)
         {
             InitializeComponent();
 
-            _connectionService = new ConnectionService();
+            _connectionService = connectionService;
 
         }
 
@@ -108,8 +108,10 @@ namespace c_lan
 
                 if (_cancellationTokenSource == cancellation)
                 {
-
+                    //及时进行令牌资源释放
                     _cancellationTokenSource.Dispose();
+                    //令牌的指针需要置空
+                    _cancellationTokenSource = null;
                 }
 
             }

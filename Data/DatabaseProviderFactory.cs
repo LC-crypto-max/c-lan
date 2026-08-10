@@ -11,6 +11,7 @@ namespace c_lan.Data
         // 不要再接收 "MySQL" 之类需要手工比较的字符串。
         public IDatabaseProvider CreateProvider(DatabaseType databaseType)
         {
+            //这里学习到了Switch在c#中切换输出对象
             return databaseType switch
             {
                 DatabaseType.MySQL => new MysqlProvider(),

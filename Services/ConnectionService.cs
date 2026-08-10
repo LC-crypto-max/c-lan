@@ -9,95 +9,59 @@ using System.Threading.Tasks;
 using System.ComponentModel;
 using System.Windows.Forms.VisualStyles;
 using System.Data.SqlTypes;
+using c_lan.Configuration;
+using c_lan.Data;
 
 namespace c_lan.Services
 {
     public class ConnectionService : IConnectionService
     {
-        public async Task<bool> TestConnectionAsync(
-            ConnectionProfile profile,CancellationToken cancellationToken
-            )
+        private readonly ConnectionProfileStore _store;
+        private readonly DatabaseProviderFactory _factory;
+        //初始化Service，引入store
+/*        未引入依赖注入
+        public ConnectionService()
         {
-            if(profile == null || String.IsNullOrWhiteSpace(profile.Host) || 0 >= profile.Port || profile.Port >65535 || profile.ConnectionTimeout <= 0) { return false; }
-
-            String connectionstring = BuildConnectionString(profile);
-
-            //使用usinglauguaue管理连接
-
-            using var conn = new MySqlConnection(connectionstring);
-
-                try
-                {
-                    
-                    await conn.OpenAsync(cancellationToken);
-
-                    Debug.WriteLine("连接成功");
-
-                    return true;
-                }
-                catch (OperationCanceledException cancel)
-                {
-
-                    Debug.WriteLine("操作被取消");
-
-                    return false;
-                }
-
-                catch (MySqlException sqlerror)
-                {
-                    Debug.WriteLine("sql错误，请检查连接、账号、网络等问题");
-
-                    Debug.WriteLine(sqlerror.Message);
-
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("发生未知错误");
-
-                    Debug.WriteLine(ex.Message);
-
-                    return false;
-                }
-
+            _store = new ConnectionProfileStore();
+            _factory = new DatabaseProviderFactory();
+        }*/
+        public ConnectionService(ConnectionProfileStore store,DatabaseProviderFactory factory)
+        {
+            _store = store;
+            _factory = factory;
         }
-
-        public static String BuildConnectionString(ConnectionProfile profile)
+        public async Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile,CancellationToken cancellationToken)
         {
-            MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder();
+            if(profile == null) { return new ConnectionResult() { IsSuccess = false,ErrorMessage = "连接信息为空"}; }
 
-            builder.Server = profile.Host;
-            builder.Port = profile.Port;
-            builder.UserID = profile.UserName;
-            builder.Password = profile.Password;
-            builder.ConnectionTimeout = profile.ConnectionTimeout;
+            DatabaseType databaseType = profile.DatabaseType;
 
-            if (profile.DefaultDatabase != null)
-            {  builder.Database = profile.DefaultDatabase; 
-               }
-            if(profile.CharacterSet != null)
+            if(databaseType == DatabaseType.MySQL)
             {
-                builder.CharacterSet = profile.CharacterSet;
+                //使用工厂管理
+                IDatabaseProvider provider = _factory.CreateProvider(databaseType);
+                //异步等待连接
+                return await provider.TestConnectionAsync(profile, cancellationToken);
             }
 
-            return builder.ToString();
         }
-        public async Task<ConnectionProfile> ReadallConfigurationAsync(
-            CancellationToken cancellationToken)
+        //读取配置文件方法
+        public async Task<List<ConnectionProfile>> ReadallConfigurationAsync(CancellationToken cancellationToken)
         {
+            //调用ConnectionProfileStore类
+            List<ConnectionProfile> profiles = await _store.LoadAsync(cancellationToken);
             
+            return profiles;
         }
 
-        public async Task<bool> SaveConnectionConfigurationAsync(
-            ConnectionProfile profile, bool keeporNot, CancellationToken token)
+/*        public async Task<bool> SaveConnectionConfigurationAsync(ConnectionProfile profile, bool keeporNot, CancellationToken token)
         {
 
         }
 
-        public async Task<bool> DeleteConnectionConfigurationAsync(
-            int configid, CancellationToken token)
+        public async Task<bool> DeleteConnectionConfigurationAsync(int configid, CancellationToken token)
         {
 
-        }
+        }*/
     }
 }

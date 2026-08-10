@@ -14,22 +14,33 @@ namespace c_lan.Data
 {
     public class MysqlProvider : IDatabaseProvider
     {
+        //此处学习了枚举类的引用
         public DatabaseType SupportedDatabaseType => DatabaseType.MySQL;
 
         public bool ValidateProfile(ConnectionProfile profile) {
-            return profile.IsValid();
-        }
+            if(profile == null)
+            {
+                return false;
+            }
 
-        public async Task<bool> TestConnectionAsync(ConnectionProfile profile, CancellationToken token)
+            if (!profile.IsValid())
+            {
+                return false;
+            }
+
+            if (profile.DatabaseType != DatabaseType.MySQL)
+            {
+                return false;
+            }
+
+            return true;
+        }
+        //测试连接方法
+        public async Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile, CancellationToken token)
         {
-            if (string.IsNullOrWhiteSpace(profile.ToString())) {
-                return false;
-            }
+            ConnectionResult result = new ConnectionResult();
             if (!ValidateProfile(profile)) {
-                return false;
-            }
-            if (profile.DatabaseType != SupportedDatabaseType) {
-                return false;
+                result.IsSuccess = false;
             }
             var connectionString = MysqlConnectionStringBuilder(profile);
             using (var conn = new MySqlConnection(connectionString))
@@ -37,19 +48,26 @@ namespace c_lan.Data
                 try {
                     await conn.OpenAsync(token);
                 }
+
                 catch (OperationCanceledException ex) {
-                    return false;
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "连接被取消" + ex.Message;
                 }
-                catch (MySqlException ex) {
-                    return false;
+
+                catch (MySqlException myex) {
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "MySQL连接失败" + myex.Message;
                 }
+
                 catch (Exception ex) {
-                    return false;
+                    result.IsSuccess = false;
+                    result.ErrorMessage = ex.Message;
                 }
-                return true;
+                return result;
             }
 
         }
+        //接触了c#调用MySQL命令
         public async Task<List<string>> GetDatabasesAsync(ConnectionProfile profile, CancellationToken token)
         {
             var connectionString = MysqlConnectionStringBuilder(profile);
@@ -67,6 +85,7 @@ namespace c_lan.Data
                 return databases;
             }
         }
+        //执行查询操作
         public async Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, QueryRequest request, CancellationToken token)
         {
             var connectionString = MysqlConnectionStringBuilder(profile);
@@ -103,7 +122,7 @@ namespace c_lan.Data
             }
             return queryresult;
         }
-
+        //连接器需要，构建连接字符串
         private string MysqlConnectionStringBuilder(ConnectionProfile profile){
             MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder();
             builder.Server = profile.Host;

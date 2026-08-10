@@ -20,6 +20,7 @@ namespace c_lan.Models
         public long IndexLength {  get; set; }
         public String CreateTime { get; set; }
 
+        //判断是否为视图
         public bool IsView()
         {
             if(ObjectType == "View") { return true; }

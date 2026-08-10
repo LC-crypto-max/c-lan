@@ -26,7 +26,7 @@ namespace c_lan.Models
         }
         public bool IsValid()
         {
-            return !String.IsNullOrWhiteSpace(ConnectionName) && !String.IsNullOrWhiteSpace(Host) && Port > 0 && Port<65535 && !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password);
+            return !String.IsNullOrWhiteSpace(ConnectionName) && !String.IsNullOrWhiteSpace(Host) && Port > 0 && Port<=65535 && !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password) && ConnectionTimeout > 0;
         }
     }
 }
