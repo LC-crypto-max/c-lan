@@ -44,6 +44,7 @@ namespace c_lan.Services
                 return await provider.TestConnectionAsync(profile, cancellationToken);
             }
 
+            return new ConnectionResult() { IsSuccess = true, ErrorMessage = "连接超时" };
         }
         //读取配置文件方法
         public async Task<List<ConnectionProfile>> ReadallConfigurationAsync(CancellationToken cancellationToken)

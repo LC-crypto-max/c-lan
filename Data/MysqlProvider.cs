@@ -47,6 +47,9 @@ namespace c_lan.Data
             {
                 try {
                     await conn.OpenAsync(token);
+                    //此处加入成功判断
+                    result.IsSuccess = true;
+                    result.ErrorMessage = null;
                 }
 
                 catch (OperationCanceledException ex) {

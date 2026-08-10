@@ -81,17 +81,17 @@ namespace c_lan
 
                 Debug.WriteLine("开始测试连接");
 
-                bool success = await _connectionService.TestConnectionAsync(_connectionProfile, cancellation.Token);
+                ConnectionResult result = await _connectionService.TestConnectionAsync(_connectionProfile, cancellation.Token);
 
                 Debug.WriteLine("测试完成");
 
-                if (success)
+                if (result.IsSuccess)
                 {
                     MessageBox.Show("连接成功");
                 }
                 else
                 {
-                    MessageBox.Show("连接失败");
+                    MessageBox.Show(result.ErrorMessage);
                 }
 
             }
