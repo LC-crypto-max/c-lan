@@ -14,6 +14,9 @@ namespace c_lan.Models
         SqlServer = 2,
 
         /// Oracle 数据库。
-        Oracle = 3
+        Oracle = 3,
+
+        //SQLlite也支持
+        SQLite = 4
     }
 }

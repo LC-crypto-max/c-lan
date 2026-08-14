@@ -1,15 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+
 using c_lan.Models;
-using System.Threading;
+
 using MySqlConnector;
-using System.Threading.Tasks;
-using c_lan.Services;
-using System.Linq.Expressions;
+
 using System.Data;
 using System.Diagnostics;
-
 namespace c_lan.Data
 {
     public class MysqlProvider : IDatabaseProvider
@@ -17,58 +12,66 @@ namespace c_lan.Data
         //此处学习了枚举类的引用
         public DatabaseType SupportedDatabaseType => DatabaseType.MySQL;
 
-        public bool ValidateProfile(ConnectionProfile profile) {
-            if(profile == null)
+        public string? ValidateProfile(ConnectionProfile profile)
+        {
+            if (string.IsNullOrWhiteSpace(profile.Host))
             {
-                return false;
+                return "请填写连接主机";
             }
 
-            if (!profile.IsValid())
+            if (profile.Port == 0 || profile.Port > 65535)
             {
-                return false;
+                return "端口范围必须在 1～65535 之间";
             }
 
-            if (profile.DatabaseType != DatabaseType.MySQL)
+            if (string.IsNullOrWhiteSpace(profile.UserName))
             {
-                return false;
+                return "连接用户名不能为空";
             }
 
-            return true;
+            if (string.IsNullOrWhiteSpace(profile.Password))
+            {
+                return "连接密码不能为空";
+            }
+
+            return null;
         }
         //测试连接方法
         public async Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile, CancellationToken token)
         {
-            ConnectionResult result = new ConnectionResult();
-            if (!ValidateProfile(profile)) {
-                result.IsSuccess = false;
+            //先进行配置错误的具体判断
+            string? validationError = ValidateProfile(profile);
+            if (validationError is not null)
+            {
+                return new ConnectionResult{IsSuccess = false,ErrorMessage = validationError};
             }
+
+            ConnectionResult result = new ConnectionResult();
             var connectionString = MysqlConnectionStringBuilder(profile);
             using (var conn = new MySqlConnection(connectionString))
             {
-                try {
+                try
+                {
                     await conn.OpenAsync(token);
                     //此处加入成功判断
                     result.IsSuccess = true;
                     result.ErrorMessage = null;
                 }
 
-                catch (OperationCanceledException ex) {
+                catch (OperationCanceledException ex)
+                {
                     result.IsSuccess = false;
                     result.ErrorMessage = "连接被取消" + ex.Message;
                 }
 
-                catch (MySqlException myex) {
+                catch (MySqlException myex)
+                {
                     result.IsSuccess = false;
                     result.ErrorMessage = "MySQL连接失败" + myex.Message;
                 }
 
-                catch (Exception ex) {
-                    result.IsSuccess = false;
-                    result.ErrorMessage = ex.Message;
-                }
                 return result;
             }
-
         }
         //接触了c#调用MySQL命令
         public async Task<List<string>> GetDatabasesAsync(ConnectionProfile profile, CancellationToken token)

@@ -14,7 +14,9 @@ namespace c_lan.Data
             //这里学习到了Switch在c#中切换输出对象
             return databaseType switch
             {
+                //此处使用=>的写法
                 DatabaseType.MySQL => new MysqlProvider(),
+                //DatabaseType.SQLite => new SQLiteProvider(),
                 //DatabaseType.SqlServer => new SqlServerDatabaseProvider(),
                 //DatabaseType.Oracle => new OracleDatabaseProvider(),
                 _ => throw new NotSupportedException($"Unsupported database type: {databaseType}"),

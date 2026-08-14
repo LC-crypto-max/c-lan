@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace c_lan.Models
+﻿namespace c_lan.Models
 {
     public sealed class ConnectionProfile
     {
@@ -20,13 +16,15 @@ namespace c_lan.Models
         public String UserName { get; set; }
         public String Password { get; set; }
 
-        public bool IsComplete()
+        //增加SQLite相关字段
+        public String DatabaseFilePath {  get; set; }
+/*        public bool IsComplete()
         {
             return !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password);
         }
         public bool IsValid()
         {
             return !String.IsNullOrWhiteSpace(ConnectionName) && !String.IsNullOrWhiteSpace(Host) && Port > 0 && Port<=65535 && !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password) && ConnectionTimeout > 0;
-        }
+        }*/
     }
 }

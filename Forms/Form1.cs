@@ -43,28 +43,6 @@ namespace c_lan
 
                 TestButton.Text = "测试中...";
 
-                if (String.IsNullOrWhiteSpace(ConnectionnameText.Text))
-                {
-                    MessageBox.Show("请输入连接名称");
-                    return;
-                }
-
-                if (String.IsNullOrWhiteSpace(HostText.Text))
-                {
-                    MessageBox.Show("请输入主机地址");
-                    return;
-                }
-                if (String.IsNullOrWhiteSpace(UserText.Text))
-                {
-                    MessageBox.Show("请输入用户名");
-                    return;
-                }
-                if (String.IsNullOrWhiteSpace(PasswordText.Text))
-                {
-                    MessageBox.Show("请输入密码");
-                    return;
-                }
-
                 _connectionProfile = new ConnectionProfile()
 
                 {

@@ -32,19 +32,40 @@ namespace c_lan.Services
         }
         public async Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile,CancellationToken cancellationToken)
         {
-            if(profile == null) { return new ConnectionResult() { IsSuccess = false,ErrorMessage = "连接信息为空"}; }
-
-            DatabaseType databaseType = profile.DatabaseType;
-
-            if(databaseType == DatabaseType.MySQL)
+            if (profile is null)
             {
-                //使用工厂管理
-                IDatabaseProvider provider = _factory.CreateProvider(databaseType);
-                //异步等待连接
-                return await provider.TestConnectionAsync(profile, cancellationToken);
+                return new ConnectionResult { IsSuccess = false, ErrorMessage = "连接信息为空" };
             }
 
-            return new ConnectionResult() { IsSuccess = true, ErrorMessage = "连接超时" };
+            if (string.IsNullOrWhiteSpace(profile.ConnectionName))
+            {
+                return new ConnectionResult { IsSuccess = false, ErrorMessage = "连接名称不能为空" };
+            }
+
+            if (profile.DatabaseType == DatabaseType.Unknown)
+            {
+                return new ConnectionResult { IsSuccess = false, ErrorMessage = "请选择数据库类型" };
+            }
+
+            if (profile.ConnectionTimeout == 0)
+            {
+                return new ConnectionResult { IsSuccess = false, ErrorMessage = "连接超时时间必须大于 0" };
+            }
+
+            DatabaseType databaseType = profile.DatabaseType;
+            //单独判断是否符合支持的数据库类型
+            IDatabaseProvider provider;
+            try
+            {
+                //使用工厂管理
+                provider = _factory.CreateProvider(databaseType);
+            }
+            catch(NotSupportedException ex)
+            {
+                return new ConnectionResult() { IsSuccess = false,ErrorMessage = ex.Message };
+            }
+            //异步等待连接
+            return await provider.TestConnectionAsync(profile, cancellationToken);
         }
         //读取配置文件方法
         public async Task<List<ConnectionProfile>> ReadallConfigurationAsync(CancellationToken cancellationToken)
@@ -55,12 +76,25 @@ namespace c_lan.Services
             return profiles;
         }
 
-/*        public async Task<bool> SaveConnectionConfigurationAsync(ConnectionProfile profile, bool keeporNot, CancellationToken token)
+        public async Task<SaveConfigurationResult> SaveConnectionConfigurationAsync(ConnectionProfile profile, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
+            if (profile == null) 
+            {
+                return new SaveConfigurationResult { IsSuccess = false, ErrorMessage = "保存失败" };
+            }
 
+            if (string.IsNullOrWhiteSpace(profile.ConnectionName))
+            {
+                return new SaveConfigurationResult { IsSuccess = false, ErrorMessage = "连接名称不能为空" };
+            }
+
+            List<ConnectionProfile> profiles = await _store.LoadAsync(token);
+
+            
         }
 
-        public async Task<bool> DeleteConnectionConfigurationAsync(int configid, CancellationToken token)
+/*        public async Task<bool> DeleteConnectionConfigurationAsync(int configid, CancellationToken token)
         {
 
         }*/
