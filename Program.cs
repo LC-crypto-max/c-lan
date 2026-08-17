@@ -19,8 +19,10 @@ namespace c_lan
             ConnectionProfileStore store= new ConnectionProfileStore();
             DatabaseProviderFactory factory= new DatabaseProviderFactory();
             IConnectionService connectionService = new ConnectionService(store,factory);
+            //对象浏览也通过Service进入Provider，Form不直接创建MysqlProvider。
+            ISchemaService schemaService = new SchemaService(factory);
 
-            Form1 form1 = new Form1(connectionService);
+            Form1 form1 = new Form1(connectionService, schemaService);
             Application.Run(form1);
         }
     }

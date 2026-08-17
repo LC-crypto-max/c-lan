@@ -10,13 +10,10 @@ namespace c_lan.Models
         /// MySQL 数据库。
         MySQL = 1,
 
-        /// Microsoft SQL Server 数据库。
-        SqlServer = 2,
-
         /// Oracle 数据库。
-        Oracle = 3,
+        Oracle = 2,
 
-        //SQLlite也支持
-        SQLite = 4
+        /// SQLite 数据库。
+        SQLite = 3
     }
 }

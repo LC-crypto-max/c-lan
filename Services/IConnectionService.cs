@@ -11,12 +11,12 @@ namespace c_lan.Services
     {
         Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile,CancellationToken cancellationToken);
 
-        Task<List<ConnectionProfile>> ReadallConfigurationAsync(CancellationToken cancellationToken);
+        Task<List<ConnectionProfile>> ReadAllConfigurationsAsync(CancellationToken cancellationToken);
 
-        Task<string> SaveConnectionConfigurationAsync(
+        Task<SaveConfigurationResult> SaveConnectionConfigurationAsync(
             ConnectionProfile profile, CancellationToken token);
 
-/*        Task<bool> DeleteConnectionConfigurationAsync(
-            int configid, CancellationToken token);*/
+        Task<SaveConfigurationResult> DeleteConnectionConfigurationAsync(
+            string connectionName, CancellationToken token);
     }
 }

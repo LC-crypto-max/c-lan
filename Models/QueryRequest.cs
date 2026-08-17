@@ -9,7 +9,7 @@ namespace c_lan.Models
         public long ConnectionId {  get; set; }
         public String? DatabaseName { get; set; }
         public String? SchemaName {  get; set; }
-        public String SqlText {  get; set; }
+        public String SqlText {  get; set; } = String.Empty;
         public int TimeoutSeconds { get; set; } = 30;
         public bool IsReadOnly {  get; set; }
 

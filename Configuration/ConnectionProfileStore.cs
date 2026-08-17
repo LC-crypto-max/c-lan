@@ -72,13 +72,13 @@ namespace c_lan.Configuration
 
             if (profiles == null)
             {
-                //判断连接配置存在
                 throw new ArgumentNullException(nameof(profiles));
             }
-                Directory.CreateDirectory(_configurationDirectoryPath);
 
             try
             {
+                // 首次保存时目录可能不存在
+                Directory.CreateDirectory(_configurationDirectoryPath);
                 //JSON序列化
                 string json = JsonSerializer.Serialize(profiles, _jsonOptions);
                 //等待异步写入数据
