@@ -6,10 +6,10 @@ namespace c_lan.Models
 {
     public sealed class TableInfo
     {
-        public String TableName { get; set; }
-        public String DatabaseName { get; set; }
+        public String TableName { get; set; } = String.Empty;
+        public String DatabaseName { get; set; } = String.Empty;
         //public String SchemaName { get; set; }
-        public String ObjectType { get; set; }
+        public String ObjectType { get; set; } = String.Empty;
         public String? Comment { get; set; }
         public String? Engine { get; set; }
         public String? Collation { get; set; }
@@ -18,8 +18,9 @@ namespace c_lan.Models
         public long RowCount { get; set; }
         public long DataLength {  get; set; }
         public long IndexLength {  get; set; }
-        public String CreateTime { get; set; }
+        public String CreateTime { get; set; } = String.Empty;
 
+        //判断是否为视图
         public bool IsView()
         {
             if(ObjectType == "View") { return true; }

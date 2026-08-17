@@ -9,16 +9,14 @@ namespace c_lan.Services
 {
     public interface IConnectionService
     {
-        Task<bool> TestConnectionAsync(
-            ConnectionProfile profile,
-            CancellationToken cancellationToken);
+        Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile,CancellationToken cancellationToken);
 
-        //Task<ConnectionProfile> ReadallConfigurationAsync(CancellationToken cancellationToken);
+        Task<List<ConnectionProfile>> ReadAllConfigurationsAsync(CancellationToken cancellationToken);
 
-        //bool SaveConnectionConfigurationAsync(
-        //    ConnectionProfile profile, bool keeporNot, CancellationToken token);
+        Task<SaveConfigurationResult> SaveConnectionConfigurationAsync(
+            ConnectionProfile profile, CancellationToken token);
 
-        //bool DeleteConnectionConfigurationAsync(
-        //    int configid, CancellationToken token);
+        Task<SaveConfigurationResult> DeleteConnectionConfigurationAsync(
+            string connectionName, CancellationToken token);
     }
 }

@@ -1,0 +1,25 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using c_lan.Models;
+
+namespace c_lan.Data
+{
+    public class DatabaseProviderFactory
+    {
+        // 工厂后续应使用同一个 DatabaseType 枚举选择 Provider，
+        // 不要再接收 "MySQL" 之类需要手工比较的字符串。
+        public IDatabaseProvider CreateProvider(DatabaseType databaseType)
+        {
+            //这里学习到了Switch在c#中切换输出对象
+            return databaseType switch
+            {
+                //此处使用=>的写法
+                DatabaseType.MySQL => new MysqlProvider(),
+                //DatabaseType.SQLite => new SQLiteProvider(),
+                //DatabaseType.Oracle => new OracleDatabaseProvider(),
+                _ => throw new NotSupportedException($"Unsupported database type: {databaseType}"),
+            };
+        }
+    }
+}
