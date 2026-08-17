@@ -62,23 +62,19 @@ namespace c_lan.Data
             //暂时不实现该功能
             throw new NotImplementedException();
         }
-        public Task<List<DatabaseObjectInfo>> GetObjectsAsync(
-            ConnectionProfile profile, string databaseName, CancellationToken token)
+        public Task<List<DatabaseObjectInfo>> GetObjectsAsync(ConnectionProfile profile, string databaseName, CancellationToken token)
         {
-            //第三关只完成MySQL，SQLite元数据留到下一阶段。
+            //SQLite元数据留到下一阶段。
             throw new NotImplementedException();
         }
-        public Task<List<ColumnInfo>> GetColumnsAsync(
-            ConnectionProfile profile, string databaseName, string objectName, CancellationToken token)
+        public Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName, CancellationToken token)
         {
-            //第三关只完成MySQL，SQLite元数据留到下一阶段。
+            //SQLite元数据留到下一阶段。
             throw new NotImplementedException();
         }
-        public Task<QueryResult> PreviewAsync(
-            ConnectionProfile profile, string databaseName, string objectName,
-            int maxRows, CancellationToken token)
+        public Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,int maxRows, CancellationToken token)
         {
-            //第三关只完成MySQL，SQLite预览留到下一阶段。
+            //SQLite预览留到下一阶段。
             throw new NotImplementedException();
         }
         public Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, QueryRequest request, CancellationToken token)

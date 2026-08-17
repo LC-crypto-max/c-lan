@@ -93,8 +93,7 @@ namespace c_lan.Data
         }
 
         //获取指定数据库下的表和视图
-        public async Task<List<DatabaseObjectInfo>> GetObjectsAsync(
-            ConnectionProfile profile, string databaseName, CancellationToken token)
+        public async Task<List<DatabaseObjectInfo>> GetObjectsAsync(ConnectionProfile profile, string databaseName, CancellationToken token)
         {
             if (string.IsNullOrWhiteSpace(databaseName))
             {
@@ -191,9 +190,7 @@ namespace c_lan.Data
         }
 
         //预览从元数据树中选择的表或视图，最多向UI返回maxRows行
-        public async Task<QueryResult> PreviewAsync(
-            ConnectionProfile profile, string databaseName, string objectName,
-            int maxRows, CancellationToken token)
+        public async Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,int maxRows, CancellationToken token)
         {
             QueryResult result = new QueryResult();
             Stopwatch stopwatch = Stopwatch.StartNew();

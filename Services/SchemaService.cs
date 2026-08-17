@@ -12,15 +12,13 @@ namespace c_lan.Services
             _factory = factory;
         }
 
-        public Task<List<string>> GetDatabasesAsync(
-            ConnectionProfile profile, CancellationToken token)
+        public Task<List<string>> GetDatabasesAsync(ConnectionProfile profile, CancellationToken token)
         {
             IDatabaseProvider provider = GetValidatedProvider(profile);
             return provider.GetDatabasesAsync(profile, token);
         }
 
-        public Task<List<DatabaseObjectInfo>> GetObjectsAsync(
-            ConnectionProfile profile, string databaseName, CancellationToken token)
+        public Task<List<DatabaseObjectInfo>> GetObjectsAsync(ConnectionProfile profile, string databaseName, CancellationToken token)
         {
             if (string.IsNullOrWhiteSpace(databaseName))
             {
@@ -31,9 +29,7 @@ namespace c_lan.Services
             return provider.GetObjectsAsync(profile, databaseName, token);
         }
 
-        public Task<List<ColumnInfo>> GetColumnsAsync(
-            ConnectionProfile profile, string databaseName, string objectName,
-            CancellationToken token)
+        public Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName,CancellationToken token)
         {
             if (string.IsNullOrWhiteSpace(databaseName))
             {
@@ -49,19 +45,15 @@ namespace c_lan.Services
             return provider.GetColumnsAsync(profile, databaseName, objectName, token);
         }
 
-        public Task<QueryResult> PreviewAsync(
-            ConnectionProfile profile, string databaseName, string objectName,
-            int maxRows, CancellationToken token)
+        public Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,int maxRows, CancellationToken token)
         {
             if (maxRows <= 0 || maxRows > 200)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(maxRows), "预览行数必须在1到200之间");
+                throw new ArgumentOutOfRangeException(nameof(maxRows), "预览行数必须在1到200之间");
             }
 
             IDatabaseProvider provider = GetValidatedProvider(profile);
-            return provider.PreviewAsync(
-                profile, databaseName, objectName, maxRows, token);
+            return provider.PreviewAsync(profile, databaseName, objectName, maxRows, token);
         }
 
         private IDatabaseProvider GetValidatedProvider(ConnectionProfile profile)

@@ -15,8 +15,7 @@ namespace c_lan.Services
             _factory = factory;
         }
 
-        public async Task<ConnectionResult> TestConnectionAsync(
-            ConnectionProfile profile, CancellationToken cancellationToken)
+        public async Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile, CancellationToken cancellationToken)
         {
             string? commonValidationError = ValidateCommonFields(profile);
             if (commonValidationError is not null)
@@ -37,15 +36,13 @@ namespace c_lan.Services
             return await provider.TestConnectionAsync(profile, cancellationToken);
         }
 
-        public Task<List<ConnectionProfile>> ReadAllConfigurationsAsync(
-            CancellationToken cancellationToken)
+        public Task<List<ConnectionProfile>> ReadAllConfigurationsAsync(CancellationToken cancellationToken)
         {
             // Service 只编排用例，JSON 的位置和反序列化细节仍由 Store 管理。
             return _store.LoadAsync(cancellationToken);
         }
 
-        public async Task<SaveConfigurationResult> SaveConnectionConfigurationAsync(
-            ConnectionProfile profile, CancellationToken token)
+        public async Task<SaveConfigurationResult> SaveConnectionConfigurationAsync(ConnectionProfile profile, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
 
@@ -113,8 +110,7 @@ namespace c_lan.Services
             }
         }
 
-        public async Task<SaveConfigurationResult> DeleteConnectionConfigurationAsync(
-            string connectionName, CancellationToken token)
+        public async Task<SaveConfigurationResult> DeleteConnectionConfigurationAsync(string connectionName, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
 
@@ -203,6 +199,7 @@ namespace c_lan.Services
             };
         }
 
+        //优化报错的统一方法
         private static SaveConfigurationResult Failed(string errorMessage)
         {
             return new SaveConfigurationResult

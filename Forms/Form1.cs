@@ -41,8 +41,7 @@ namespace c_lan
         {
             try
             {
-                List<ConnectionProfile> profiles =
-                    await _connectionService.ReadAllConfigurationsAsync(CancellationToken.None);
+                List<ConnectionProfile> profiles = await _connectionService.ReadAllConfigurationsAsync(CancellationToken.None);
 
                 // 当前界面还没有“已保存连接”下拉框，先回填第一条配置完成读取闭环。
                 // 第三关之后如果增加连接列表，可把这里改为回填用户选中的配置。
@@ -54,11 +53,7 @@ namespace c_lan
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    ex.Message,
-                    "读取连接配置失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message,"读取连接配置失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
         }
 
@@ -74,9 +69,7 @@ namespace c_lan
                 ConnectionProfile profile = BuildConnectionProfileFromForm();
 
                 Debug.WriteLine("开始测试连接");
-                ConnectionResult result = await _connectionService.TestConnectionAsync(
-                    profile,
-                    cancellation.Token);
+                ConnectionResult result = await _connectionService.TestConnectionAsync(profile,cancellation.Token);
                 Debug.WriteLine("测试完成");
 
                 MessageBox.Show(result.IsSuccess ? "连接成功" : result.ErrorMessage);
@@ -114,8 +107,7 @@ namespace c_lan
                 ConnectionStatusLabel.Text = "● 正在连接";
 
                 ConnectionProfile profile = BuildConnectionProfileFromForm();
-                List<string> databases = await _schemaService.GetDatabasesAsync(
-                    profile, cancellation.Token);
+                List<string> databases = await _schemaService.GetDatabasesAsync(profile, cancellation.Token);
 
                 _activeConnectionProfile = profile;
                 FillDatabaseTree(databases);
@@ -123,8 +115,7 @@ namespace c_lan
                 //数据库下拉框仍会在后续查询功能中使用，因此这里同步填充。
                 DatabaseComboBox.DataSource = null;
                 DatabaseComboBox.DataSource = databases;
-                if (!String.IsNullOrWhiteSpace(profile.DefaultDatabase)
-                    && databases.Contains(profile.DefaultDatabase))
+                if (!String.IsNullOrWhiteSpace(profile.DefaultDatabase) && databases.Contains(profile.DefaultDatabase))
                 {
                     DatabaseComboBox.SelectedItem = profile.DefaultDatabase;
                 }
@@ -144,11 +135,7 @@ namespace c_lan
                 _databaseTreeView.Nodes.Clear();
                 ConnectionStatusLabel.Text = "● 连接失败";
                 ConnectionStatusLabel.ForeColor = Color.FromArgb(173, 58, 58);
-                MessageBox.Show(
-                    ex.Message,
-                    "加载数据库失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message,"加载数据库失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
             finally
             {
@@ -204,13 +191,10 @@ namespace c_lan
             }
         }
 
-        private async void DatabaseTreeView_BeforeExpand(
-            object? sender, TreeViewCancelEventArgs e)
+        private async void DatabaseTreeView_BeforeExpand(object? sender, TreeViewCancelEventArgs e)
         {
             TreeNode? treeNode = e.Node;
-            if (_activeConnectionProfile is null
-                || treeNode?.Tag is not BrowserNodeInfo nodeInfo
-                || !HasPlaceholderNode(treeNode))
+            if (_activeConnectionProfile is null || treeNode?.Tag is not BrowserNodeInfo nodeInfo || !HasPlaceholderNode(treeNode))
             {
                 return;
             }
@@ -237,11 +221,7 @@ namespace c_lan
             catch (Exception ex)
             {
                 treeNode.Nodes.Add(CreatePlaceholderNode());
-                MessageBox.Show(
-                    ex.Message,
-                    "加载数据库对象失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message,"加载数据库对象失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
             finally
             {
@@ -249,11 +229,9 @@ namespace c_lan
             }
         }
 
-        private async Task LoadObjectNodesAsync(
-            TreeNode databaseNode, BrowserNodeInfo nodeInfo, CancellationToken token)
+        private async Task LoadObjectNodesAsync(TreeNode databaseNode, BrowserNodeInfo nodeInfo, CancellationToken token)
         {
-            List<DatabaseObjectInfo> objects = await _schemaService.GetObjectsAsync(
-                _activeConnectionProfile!, nodeInfo.DatabaseName, token);
+            List<DatabaseObjectInfo> objects = await _schemaService.GetObjectsAsync(_activeConnectionProfile!, nodeInfo.DatabaseName, token);
 
             foreach (DatabaseObjectInfo databaseObject in objects)
             {
@@ -279,14 +257,9 @@ namespace c_lan
             }
         }
 
-        private async Task LoadColumnNodesAsync(
-            TreeNode objectNode, BrowserNodeInfo nodeInfo, CancellationToken token)
+        private async Task LoadColumnNodesAsync(TreeNode objectNode, BrowserNodeInfo nodeInfo, CancellationToken token)
         {
-            List<ColumnInfo> columns = await _schemaService.GetColumnsAsync(
-                _activeConnectionProfile!,
-                nodeInfo.DatabaseName,
-                nodeInfo.ObjectName,
-                token);
+            List<ColumnInfo> columns = await _schemaService.GetColumnsAsync(_activeConnectionProfile!,nodeInfo.DatabaseName,nodeInfo.ObjectName,token);
 
             foreach (ColumnInfo column in columns)
             {
@@ -313,13 +286,10 @@ namespace c_lan
         }
 
         //双击表或视图后，在已有DataGridView中显示前200行
-        private async void DatabaseTreeView_NodeMouseDoubleClick(
-            object? sender, TreeNodeMouseClickEventArgs e)
+        private async void DatabaseTreeView_NodeMouseDoubleClick(object? sender, TreeNodeMouseClickEventArgs e)
         {
             TreeNode? treeNode = e.Node;
-            if (_activeConnectionProfile is null
-                || treeNode?.Tag is not BrowserNodeInfo nodeInfo
-                || nodeInfo.NodeType != BrowserNodeType.DatabaseObject)
+            if (_activeConnectionProfile is null || treeNode?.Tag is not BrowserNodeInfo nodeInfo || nodeInfo.NodeType != BrowserNodeType.DatabaseObject)
             {
                 return;
             }
@@ -328,12 +298,7 @@ namespace c_lan
             try
             {
                 ResultStateLabel.Text = "正在加载预览...";
-                QueryResult result = await _schemaService.PreviewAsync(
-                    _activeConnectionProfile,
-                    nodeInfo.DatabaseName,
-                    nodeInfo.ObjectName,
-                    200,
-                    cancellation.Token);
+                QueryResult result = await _schemaService.PreviewAsync(_activeConnectionProfile,nodeInfo.DatabaseName,nodeInfo.ObjectName,200,cancellation.Token);
 
                 if (!result.IsSuccess)
                 {
@@ -345,8 +310,7 @@ namespace c_lan
                 dataGridView1.DataSource = result.Rows;
                 ResultSummaryLabel.Text = $"{nodeInfo.DatabaseName}.{nodeInfo.ObjectName}";
                 string truncatedText = result.IsTruncated ? "，仅显示前200行" : String.Empty;
-                ResultStateLabel.Text =
-                    $"{result.RowCount ?? 0} 行，{result.ExecutionTime} ms{truncatedText}";
+                ResultStateLabel.Text = $"{result.RowCount ?? 0} 行，{result.ExecutionTime} ms{truncatedText}";
                 CurrentDatabaseStatusLabel.Text = $"数据库：{nodeInfo.DatabaseName}";
                 ResultTabControl.SelectedTab = ResultTabPage;
             }
@@ -357,11 +321,7 @@ namespace c_lan
             catch (Exception ex)
             {
                 ResultStateLabel.Text = "预览失败";
-                MessageBox.Show(
-                    ex.Message,
-                    "预览失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message,"预览失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
             finally
             {
@@ -371,9 +331,7 @@ namespace c_lan
 
         private static bool HasPlaceholderNode(TreeNode node)
         {
-            return node.Nodes.Count == 1
-                && node.Nodes[0].Tag is BrowserNodeInfo placeholder
-                && placeholder.NodeType == BrowserNodeType.Placeholder;
+            return node.Nodes.Count == 1 && node.Nodes[0].Tag is BrowserNodeInfo placeholder && placeholder.NodeType == BrowserNodeType.Placeholder;
         }
 
         private static TreeNode CreatePlaceholderNode()
@@ -430,11 +388,7 @@ namespace c_lan
                 return;
             }
 
-            DialogResult confirmation = MessageBox.Show(
-                $"确定删除连接配置“{connectionName}”吗？",
-                "确认删除",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
+            DialogResult confirmation = MessageBox.Show($"确定删除连接配置“{connectionName}”吗？","确认删除",MessageBoxButtons.YesNo,MessageBoxIcon.Question);
 
             if (confirmation != DialogResult.Yes)
             {
@@ -448,10 +402,7 @@ namespace c_lan
                 SetConfigurationButtonsEnabled(false);
                 DeleteConnectionButton.Text = "删除中...";
 
-                SaveConfigurationResult result =
-                    await _connectionService.DeleteConnectionConfigurationAsync(
-                        connectionName,
-                        cancellation.Token);
+                SaveConfigurationResult result = await _connectionService.DeleteConnectionConfigurationAsync(connectionName,cancellation.Token);
 
                 ShowConfigurationResult(result, "删除连接配置");
             }
@@ -461,11 +412,7 @@ namespace c_lan
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    ex.Message,
-                    "删除连接配置失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message,"删除连接配置失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
             finally
             {
@@ -506,10 +453,7 @@ namespace c_lan
             SslModeComboBox.Text = profile.SSLmode;
             SavePasswordCheckBox.Checked = profile.SavePassword;
 
-            decimal timeout = Math.Clamp(
-                (decimal)profile.ConnectionTimeout,
-                TimeoutNumericUpDown.Minimum,
-                TimeoutNumericUpDown.Maximum);
+            decimal timeout = Math.Clamp((decimal)profile.ConnectionTimeout,TimeoutNumericUpDown.Minimum,TimeoutNumericUpDown.Maximum);
             TimeoutNumericUpDown.Value = timeout;
         }
 
