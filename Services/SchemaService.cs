@@ -53,6 +53,7 @@ namespace c_lan.Services
             }
 
             IDatabaseProvider provider = GetValidatedProvider(profile);
+
             return provider.PreviewAsync(profile, databaseName, objectName, maxRows, token);
         }
 
@@ -65,6 +66,7 @@ namespace c_lan.Services
 
             //工厂负责选择策略，Service不需要判断MySQL或SQLite的具体类型。
             IDatabaseProvider provider = _factory.CreateProvider(profile.DatabaseType);
+
             string? validationError = provider.ValidateProfile(profile);
             if (validationError is not null)
             {
