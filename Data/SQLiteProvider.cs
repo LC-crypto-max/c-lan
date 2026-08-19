@@ -59,13 +59,53 @@ namespace c_lan.Data
         }
         public Task<List<string>> GetDatabasesAsync(ConnectionProfile profile, CancellationToken token)
         {
-            //暂时不实现该功能
-            throw new NotImplementedException();
+            token.ThrowIfCancellationRequested();
+
+            //使用main来实现逻辑
+            return Task.FromResult(new List<string> { "main" });
         }
-        public Task<List<DatabaseObjectInfo>> GetObjectsAsync(ConnectionProfile profile, string databaseName, CancellationToken token)
+        public async Task<List<DatabaseObjectInfo>> GetObjectsAsync(ConnectionProfile profile, string databaseName, CancellationToken token)
         {
-            //SQLite元数据留到下一阶段。
-            throw new NotImplementedException();
+            //实现sqlite元数据读取
+            token.ThrowIfCancellationRequested();
+            //判断现在是不是main数据库范围
+            if(!string.Equals(databaseName, "main", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("SQLite当前仅支持main数据库范围", nameof(databaseName));
+            }
+
+            string? validationError = ValidateProfile(profile);
+            //检查是否存在有效性错误
+            if (validationError is not null)
+            {
+                throw new ArgumentException(validationError, nameof(profile));
+            }
+            const string sql = """
+                SELECT name,type
+                FROM sqlite_schema
+                WHERE type IN ('table','view')
+                	AND name NOT LIKE 'sqlite_%'
+                	ORDER BY type,name
+                """;
+            //这里仍然使用using进行连接管理
+            using var conn = new SqliteConnection(SQLiteConnectionStringBuilder(profile));
+
+            await conn.OpenAsync(token);
+            //使用sql命令行查询
+            using var cmd = new SqliteCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(token);
+
+            var objects = new List<DatabaseObjectInfo>();
+            while(await reader.ReadAsync(token))
+            {
+                string sqliteObjectType = reader.GetString(1);
+                //实际查询结果构建
+                objects.Add(new DatabaseObjectInfo { ObjectName = reader.GetString(0), ObjectType = string.Equals(sqliteObjectType, "view", StringComparison.OrdinalIgnoreCase) ? "View" : "Table",
+                DatabaseName = "main",SchemaName = "main",IsSystemObject = false,Description = string.Empty
+                });
+            }
+
+            return objects;
         }
         public Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName, CancellationToken token)
         {
