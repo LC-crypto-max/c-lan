@@ -26,6 +26,7 @@ namespace c_lan.Services
             IDatabaseProvider provider;
             try
             {
+                //使用工厂管理
                 provider = _factory.CreateProvider(profile.DatabaseType);
             }
             catch (NotSupportedException ex)
@@ -89,11 +90,7 @@ namespace c_lan.Services
 
                 await _store.SaveAsync(profiles, token);
 
-                return new SaveConfigurationResult
-                {
-                    IsSuccess = true,
-                    Message = isUpdate ? "连接配置已更新" : "连接配置已保存"
-                };
+                return new SaveConfigurationResult{IsSuccess = true,Message = isUpdate ? "连接配置已更新" : "连接配置已保存"};
             }
             catch (OperationCanceledException)
             {
@@ -122,8 +119,7 @@ namespace c_lan.Services
             try
             {
                 List<ConnectionProfile> profiles = await _store.LoadAsync(token);
-                int existingIndex = profiles.FindIndex(item =>
-                    string.Equals(item.ConnectionName.Trim(),connectionName.Trim(),StringComparison.OrdinalIgnoreCase));
+                int existingIndex = profiles.FindIndex(item => string.Equals(item.ConnectionName.Trim(),connectionName.Trim(),StringComparison.OrdinalIgnoreCase));
 
                 if (existingIndex < 0)
                 {
@@ -202,11 +198,7 @@ namespace c_lan.Services
         //优化报错的统一方法
         private static SaveConfigurationResult Failed(string errorMessage)
         {
-            return new SaveConfigurationResult
-            {
-                IsSuccess = false,
-                ErrorMessage = errorMessage
-            };
+            return new SaveConfigurationResult{IsSuccess = false,ErrorMessage = errorMessage};
         }
     }
 }
