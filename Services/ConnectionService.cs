@@ -75,8 +75,7 @@ namespace c_lan.Services
                 ConnectionProfile profileForStorage = CreateStorageCopy(profile);
 
                 // 当前阶段以连接名称作为唯一键，并忽略名称大小写差异。
-                int existingIndex = profiles.FindIndex(item =>
-                    string.Equals(item.ConnectionName.Trim(),profileForStorage.ConnectionName,StringComparison.OrdinalIgnoreCase));
+                int existingIndex = profiles.FindIndex(item =>string.Equals(item.ConnectionName.Trim(),profileForStorage.ConnectionName,StringComparison.OrdinalIgnoreCase));
 
                 bool isUpdate = existingIndex >= 0;
                 if (isUpdate)
@@ -94,7 +93,6 @@ namespace c_lan.Services
             }
             catch (OperationCanceledException)
             {
-                // 取消由 UI 单独识别，不能包装成普通的“保存失败”。
                 throw;
             }
             catch (IOException ex)

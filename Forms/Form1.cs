@@ -81,11 +81,7 @@ namespace c_lan
             catch (Exception ex)
             {
                 Debug.WriteLine("测试连接遇到未知错误");
-                MessageBox.Show(
-                    ex.Message,
-                    "测试连接失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message,"测试连接失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
             finally
             {
@@ -171,14 +167,7 @@ namespace c_lan
                 _databaseTreeView.Nodes.Clear();
                 foreach (string database in databases)
                 {
-                    TreeNode databaseNode = new TreeNode(database)
-                    {
-                        Tag = new BrowserNodeInfo
-                        {
-                            NodeType = BrowserNodeType.Database,
-                            DatabaseName = database
-                        }
-                    };
+                    TreeNode databaseNode = new TreeNode(database){Tag = new BrowserNodeInfo{NodeType = BrowserNodeType.Database,DatabaseName = database}};
 
                     //占位节点会让TreeView显示展开箭头，真正展开时再访问数据库。
                     databaseNode.Nodes.Add(CreatePlaceholderNode());
@@ -239,13 +228,7 @@ namespace c_lan
                 TreeNode objectNode = new TreeNode($"[{iconText}] {databaseObject.ObjectName}")
                 {
                     ToolTipText = databaseObject.Description,
-                    Tag = new BrowserNodeInfo
-                    {
-                        NodeType = BrowserNodeType.DatabaseObject,
-                        DatabaseName = databaseObject.DatabaseName,
-                        ObjectName = databaseObject.ObjectName,
-                        ObjectType = databaseObject.ObjectType
-                    }
+                    Tag = new BrowserNodeInfo{NodeType = BrowserNodeType.DatabaseObject,DatabaseName = databaseObject.DatabaseName,ObjectName = databaseObject.ObjectName,ObjectType = databaseObject.ObjectType}
                 };
                 objectNode.Nodes.Add(CreatePlaceholderNode());
                 databaseNode.Nodes.Add(objectNode);
@@ -269,12 +252,7 @@ namespace c_lan
                     $"{column.ColumnName} : {column.FullColumnType} {nullableText}{keyText}")
                 {
                     ToolTipText = column.Comment ?? String.Empty,
-                    Tag = new BrowserNodeInfo
-                    {
-                        NodeType = BrowserNodeType.Column,
-                        DatabaseName = nodeInfo.DatabaseName,
-                        ObjectName = nodeInfo.ObjectName
-                    }
+                    Tag = new BrowserNodeInfo{NodeType = BrowserNodeType.Column,DatabaseName = nodeInfo.DatabaseName,ObjectName = nodeInfo.ObjectName}
                 };
                 objectNode.Nodes.Add(columnNode);
             }
@@ -352,10 +330,7 @@ namespace c_lan
                 SaveConnectionButton.Text = "保存中...";
 
                 ConnectionProfile profile = BuildConnectionProfileFromForm();
-                SaveConfigurationResult result =
-                    await _connectionService.SaveConnectionConfigurationAsync(
-                        profile,
-                        cancellation.Token);
+                SaveConfigurationResult result =await _connectionService.SaveConnectionConfigurationAsync(profile,cancellation.Token);
 
                 ShowConfigurationResult(result, "保存连接配置");
             }
@@ -365,11 +340,7 @@ namespace c_lan
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    ex.Message,
-                    "保存连接配置失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message,"保存连接配置失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
             finally
             {
