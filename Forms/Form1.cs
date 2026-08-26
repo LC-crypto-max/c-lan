@@ -8,16 +8,18 @@ namespace c_lan
     {
         private readonly IConnectionService _connectionService;
         private readonly ISchemaService _schemaService;
+        private readonly IQueryService _queryService;
         private CancellationTokenSource? _cancellationTokenSource;
         private ConnectionProfile? _activeConnectionProfile;
         private readonly TreeView _databaseTreeView = new TreeView();
         private readonly TabPage _databaseObjectsTabPage = new TabPage();
 
-        public Form1(IConnectionService connectionService, ISchemaService schemaService)
+        public Form1(IConnectionService connectionService, ISchemaService schemaService, IQueryService queryService)
         {
             InitializeComponent();
             _connectionService = connectionService;
             _schemaService = schemaService;
+            _queryService = queryService;
 
             // 这些事件属于业务接线，放在 Form 代码中比手工修改 Designer 更容易阅读。
             Shown += Form1_Shown;
@@ -25,7 +27,85 @@ namespace c_lan
             SaveConnectionButton.Click += SaveConnectionButton_Click;
             DeleteConnectionButton.Click += DeleteConnectionButton_Click;
             ShowPasswordCheckBox.CheckedChanged += ShowPasswordCheckBox_CheckedChanged;
+            ExecuteQueryButton.Click += ExecuteQueryButton_Click;
+            StopQueryButton.Click += StopQueryButton_Click;
+            ClearSqlButton.Click += ClearSqlButton_Click;
+            StopQueryButton.Enabled = false;
             InitializeDatabaseObjectBrowser();
+        }
+
+        private async void ExecuteQueryButton_Click(object? sender, EventArgs e)
+        {
+            if (_activeConnectionProfile is null)
+            {
+                MessageBox.Show("请先连接数据库", "执行查询");
+                return;
+            }
+
+            CancellationTokenSource cancellation = CreateNewCancellationToken();
+            try
+            {
+                ExecuteQueryButton.Enabled = false;
+                StopQueryButton.Enabled = true;
+                ResultStateLabel.Text = "查询执行中...";
+                MessageTextBox.Text = "正在执行查询，请稍候。";
+
+                QueryRequest request = new QueryRequest
+                {
+                    DatabaseName = DatabaseComboBox.SelectedItem?.ToString(),
+                    SqlText = SqlEditorTextBox.Text,
+                    TimeoutSeconds = (int)QueryTimeoutNumericUpDown.Value,
+                    MaxRows = 2000,
+                    IsReadOnly = ReadOnlyCheckBox.Checked
+                };
+                QueryResult result = await _queryService.ExecuteAsync(_activeConnectionProfile, request, cancellation.Token);
+                if (!result.IsSuccess)
+                {
+                    ResultStateLabel.Text = "查询失败";
+                    MessageTextBox.Text = result.ErrorMessage ?? "查询失败，未返回具体原因。";
+                    ResultTabControl.SelectedTab = MessageTabPage;
+                    return;
+                }
+
+                dataGridView1.DataSource = result.Rows;
+                ResultSummaryLabel.Text = "查询结果";
+                string truncatedText = result.IsTruncated ? "，结果已截断" : String.Empty;
+                ResultStateLabel.Text = $"{result.RowCount ?? 0} 行，{result.ExecutionTime} ms{truncatedText}";
+                MessageTextBox.Text = "查询执行成功。";
+                ResultTabControl.SelectedTab = ResultTabPage;
+            }
+            catch (OperationCanceledException)
+            {
+                ResultStateLabel.Text = "查询已取消";
+                MessageTextBox.Text = "用户停止了这次查询。";
+                ResultTabControl.SelectedTab = MessageTabPage;
+            }
+            catch (Exception ex)
+            {
+                ResultStateLabel.Text = "查询失败";
+                MessageTextBox.Text = ex.Message;
+                ResultTabControl.SelectedTab = MessageTabPage;
+            }
+            finally
+            {
+                ExecuteQueryButton.Enabled = true;
+                StopQueryButton.Enabled = false;
+                DisposeCancellationToken(cancellation);
+            }
+        }
+
+        private void StopQueryButton_Click(object? sender, EventArgs e)
+        {
+            //停止按钮只发出取消通知，真正的数据库操作由Provider自行结束。
+            _cancellationTokenSource?.Cancel();
+            ResultStateLabel.Text = "正在停止查询...";
+        }
+
+        private void ClearSqlButton_Click(object? sender, EventArgs e)
+        {
+            SqlEditorTextBox.Clear();
+            MessageTextBox.Clear();
+            ResultStateLabel.Text = "尚未执行查询";
         }
 
         private CancellationTokenSource CreateNewCancellationToken()

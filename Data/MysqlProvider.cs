@@ -261,9 +261,16 @@ namespace c_lan.Data
                 using var reader = await cmd.ExecuteReaderAsync(token);
                 var datatable = new DataTable();
                 datatable.Load(reader);
+                int safeMaxRows = Math.Clamp(request.MaxRows, 1, 2000);
+                bool isTruncated = datatable.Rows.Count > safeMaxRows;
+                while (datatable.Rows.Count > safeMaxRows)
+                {
+                    datatable.Rows.RemoveAt(datatable.Rows.Count - 1);
+                }
                 queryresult.IsSuccess = true;
                 queryresult.RowCount = datatable.Rows.Count;
                 queryresult.Rows = datatable;
+                queryresult.IsTruncated = isTruncated;
             }
             catch (OperationCanceledException) {
                 queryresult.IsSuccess = false;

@@ -1,6 +1,7 @@
 using c_lan.Configuration;
 using c_lan.Data;
 using c_lan.Services;
+using c_lan.Utilities;
 
 namespace c_lan
 {
@@ -21,8 +22,9 @@ namespace c_lan
             IConnectionService connectionService = new ConnectionService(store,factory);
             //对象浏览也通过Service进入Provider，Form不直接创建MysqlProvider。
             ISchemaService schemaService = new SchemaService(factory);
+            IQueryService queryService = new QueryService(factory, new ReadOnlySqlValidator());
 
-            Form1 form1 = new Form1(connectionService, schemaService);
+            Form1 form1 = new Form1(connectionService, schemaService, queryService);
             Application.Run(form1);
         }
     }
