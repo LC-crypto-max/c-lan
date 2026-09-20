@@ -136,9 +136,9 @@ namespace c_lan
             HeaderTitleLabel.ForeColor = Color.White;
             HeaderTitleLabel.Location = new Point(20, 18);
             HeaderTitleLabel.Name = "HeaderTitleLabel";
-            HeaderTitleLabel.Size = new Size(201, 36);
+            HeaderTitleLabel.Size = new Size(204, 36);
             HeaderTitleLabel.TabIndex = 0;
-            HeaderTitleLabel.Text = "MySQL 工作台";
+            HeaderTitleLabel.Text = "多数据库工作台";
             // 
             // MainSplitContainer
             // 
@@ -532,9 +532,9 @@ namespace c_lan
             ConnectionTipLabel.ForeColor = Color.FromArgb(112, 122, 136);
             ConnectionTipLabel.Location = new Point(189, 27);
             ConnectionTipLabel.Name = "ConnectionTipLabel";
-            ConnectionTipLabel.Size = new Size(80, 20);
+            ConnectionTipLabel.Size = new Size(157, 20);
             ConnectionTipLabel.TabIndex = 5;
-            ConnectionTipLabel.Text = "仅 MySQL";
+            ConnectionTipLabel.Text = "支持 MySQL / SQLite";
             // 
             // ConnectionSectionLabel
             // 
@@ -604,7 +604,7 @@ namespace c_lan
             SqlEditorTextBox.Name = "SqlEditorTextBox";
             SqlEditorTextBox.Size = new Size(927, 205);
             SqlEditorTextBox.TabIndex = 20;
-            SqlEditorTextBox.Text = "-- 在此输入 MySQL 查询语句\n";
+            SqlEditorTextBox.Text = "-- 在此输入 SQL 查询语句\n";
             // 
             // QueryToolbarPanel
             // 
@@ -865,7 +865,7 @@ namespace c_lan
             MinimumSize = new Size(1120, 720);
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "MySQL 数据库浏览器";
+            Text = "多数据库浏览器";
             WindowState = FormWindowState.Maximized;
             HeaderPanel.ResumeLayout(false);
             HeaderPanel.PerformLayout();

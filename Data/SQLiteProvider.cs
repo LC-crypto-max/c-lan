@@ -108,7 +108,7 @@ namespace c_lan.Data
                 string sql = $"SELECT * FROM {QuoteIdentifier(objectName)} LIMIT $fetchRows";
                 using var conn = new SqliteConnection(BuildConnectionString(profile));
                 await conn.OpenAsync(token);
-                using var cmd = new SqliteCommand(sql, conn);
+                using var cmd = new SqliteCommand(sql, conn) { CommandTimeout = (int)Math.Clamp(profile.ConnectionTimeout, 1u, 3600u) };
                 cmd.Parameters.AddWithValue("$fetchRows", safeMaxRows + 1);
                 using var reader = await cmd.ExecuteReaderAsync(token);
                 DataTable table = new DataTable();
@@ -152,7 +152,12 @@ namespace c_lan.Data
 
         private static string BuildConnectionString(ConnectionProfile profile)
         {
-            SqliteConnectionStringBuilder builder = new SqliteConnectionStringBuilder { DataSource = profile.DatabaseFilePath, Mode = SqliteOpenMode.ReadOnly };
+            SqliteConnectionStringBuilder builder = new SqliteConnectionStringBuilder
+            {
+                DataSource = profile.DatabaseFilePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                DefaultTimeout = (int)Math.Clamp(profile.ConnectionTimeout, 1u, 3600u)
+            };
             return builder.ToString();
         }
 

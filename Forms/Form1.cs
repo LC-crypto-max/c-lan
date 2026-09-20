@@ -13,6 +13,10 @@ namespace c_lan
         private ConnectionProfile? _activeConnectionProfile;
         private readonly TreeView _databaseTreeView = new TreeView();
         private readonly TabPage _databaseObjectsTabPage = new TabPage();
+        private readonly ComboBox _databaseTypeComboBox = new ComboBox();
+        private readonly Button _browseSqliteButton = new Button();
+        private readonly Panel _hostInputPanel = new Panel();
+        private readonly ComboBox _sqliteFileComboBox = new ComboBox();
 
         public Form1(IConnectionService connectionService, ISchemaService schemaService, IQueryService queryService)
         {
@@ -24,6 +28,7 @@ namespace c_lan
             // 这些事件属于业务接线，放在 Form 代码中比手工修改 Designer 更容易阅读。
             Shown += Form1_Shown;
             ConnectButton.Click += ConnectButton_Click;
+            TestButton.Click += TestButton_Click;
             SaveConnectionButton.Click += SaveConnectionButton_Click;
             DeleteConnectionButton.Click += DeleteConnectionButton_Click;
             ShowPasswordCheckBox.CheckedChanged += ShowPasswordCheckBox_CheckedChanged;
@@ -32,6 +37,7 @@ namespace c_lan
             ClearSqlButton.Click += ClearSqlButton_Click;
             StopQueryButton.Enabled = false;
             InitializeDatabaseObjectBrowser();
+            InitializeDatabaseTypeUi();
         }
 
         private async void ExecuteQueryButton_Click(object? sender, EventArgs e)
@@ -137,7 +143,7 @@ namespace c_lan
             }
         }
 
-        private async void TestButton_Click(object sender, EventArgs e)
+        private async void TestButton_Click(object? sender, EventArgs e)
         {
             CancellationTokenSource cancellation = CreateNewCancellationToken();
 
@@ -216,7 +222,7 @@ namespace c_lan
             finally
             {
                 ConnectButton.Enabled = true;
-                ConnectButton.Text = "连接 MySQL";
+                ConnectButton.Text = _databaseTypeComboBox.SelectedIndex == 1 ? "连接 SQLite" : "连接 MySQL";
                 DisposeCancellationToken(cancellation);
             }
         }
@@ -473,13 +479,122 @@ namespace c_lan
             }
         }
 
+        private void InitializeDatabaseTypeUi()
+        {
+            _databaseTypeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            _databaseTypeComboBox.Items.AddRange(new object[] { "MySQL", "SQLite" });
+            _databaseTypeComboBox.SelectedIndex = 0;
+            _databaseTypeComboBox.Location = new Point(120, 18);
+            _databaseTypeComboBox.Size = new Size(150, 28);
+            _databaseTypeComboBox.SelectedIndexChanged += (_, _) => UpdateDatabaseTypeUi();
+            ConnectionPanel.Controls.Add(_databaseTypeComboBox);
+
+            ConnectionFieldsTable.Controls.Remove(HostText);
+            _hostInputPanel.Dock = DockStyle.Fill;
+            _hostInputPanel.Margin = new Padding(0, 0, 0, 8);
+            HostText.Dock = DockStyle.Fill;
+            HostText.Leave += (_, _) => RefreshSqliteFiles(showMessage: false);
+            _browseSqliteButton.Text = "选择文件夹";
+            _browseSqliteButton.Dock = DockStyle.Right;
+            _browseSqliteButton.Width = 105;
+            _browseSqliteButton.Visible = false;
+            _browseSqliteButton.Click += BrowseSqliteButton_Click;
+            _hostInputPanel.Controls.Add(HostText);
+            _hostInputPanel.Controls.Add(_browseSqliteButton);
+            ConnectionFieldsTable.Controls.Add(_hostInputPanel, 0, 3);
+
+            _sqliteFileComboBox.Dock = DockStyle.Fill;
+            _sqliteFileComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            _sqliteFileComboBox.Visible = false;
+            _sqliteFileComboBox.Format += (_, e) =>
+            {
+                if (e.ListItem is string path) e.Value = Path.GetFileName(path);
+            };
+            ConnectionFieldsTable.Controls.Add(_sqliteFileComboBox, 0, 5);
+            UpdateDatabaseTypeUi();
+        }
+
+        private void UpdateDatabaseTypeUi()
+        {
+            bool sqlite = _databaseTypeComboBox.SelectedIndex == 1;
+            ConnectionTipLabel.Visible = false;
+            if (sqlite && !Directory.Exists(HostText.Text))
+            {
+                HostText.Clear();
+            }
+            HostLabel.Text = sqlite ? "SQLite 文件夹" : "主机地址";
+            HostText.PlaceholderText = sqlite ? "选择包含 .db/.sqlite/.sqlite3 文件的目录" : "localhost 或服务器 IP";
+            _browseSqliteButton.Visible = sqlite;
+            PortLabel.Text = sqlite ? "数据库文件" : "端口";
+            PortLabel.Visible = true;
+            PortText.Visible = !sqlite;
+            _sqliteFileComboBox.Visible = sqlite;
+            UserLabel.Visible = UserText.Visible = !sqlite;
+            PasswordLabel.Visible = PasswordPanel.Visible = !sqlite;
+            DefaultDatabaseLabel.Visible = DefaultDatabaseText.Visible = !sqlite;
+            CharacterSetLabel.Visible = CharacterSetComboBox.Visible = !sqlite;
+            SslModeLabel.Visible = SslModeComboBox.Visible = !sqlite;
+            SavePasswordCheckBox.Visible = !sqlite;
+            ConnectButton.Text = sqlite ? "连接 SQLite" : "连接 MySQL";
+            ConnectionTipLabel.Text = sqlite ? "选择文件夹后自动发现 SQLite 数据库" : "MySQL 服务器连接";
+            HeaderTitleLabel.Text = "多数据库工作台";
+            if (String.IsNullOrWhiteSpace(SqlEditorTextBox.Text) || SqlEditorTextBox.Text.TrimStart().StartsWith("-- 在此输入", StringComparison.Ordinal))
+            {
+                SqlEditorTextBox.Text = sqlite ? "-- 在此输入 SQLite 查询语句\n" : "-- 在此输入 MySQL 查询语句\n";
+            }
+            Text = "多数据库浏览器";
+            if (sqlite) RefreshSqliteFiles(showMessage: false);
+        }
+
+        private void BrowseSqliteButton_Click(object? sender, EventArgs e)
+        {
+            using FolderBrowserDialog dialog = new FolderBrowserDialog
+            {
+                Description = "选择包含 SQLite 数据库文件的文件夹",
+                UseDescriptionForTitle = true,
+                ShowNewFolderButton = false,
+                InitialDirectory = Directory.Exists(HostText.Text) ? HostText.Text : AppContext.BaseDirectory
+            };
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                HostText.Text = dialog.SelectedPath;
+                RefreshSqliteFiles(showMessage: true);
+            }
+        }
+
+        private void RefreshSqliteFiles(bool showMessage)
+        {
+            if (_databaseTypeComboBox.SelectedIndex != 1) return;
+            string folder = HostText.Text.Trim();
+            _sqliteFileComboBox.Items.Clear();
+            if (!Directory.Exists(folder)) return;
+
+            try
+            {
+                string[] supportedExtensions = { ".db", ".sqlite", ".sqlite3" };
+                List<string> files = Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)
+                    .Where(path => supportedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+                    .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                _sqliteFileComboBox.Items.AddRange(files.Cast<object>().ToArray());
+                if (_sqliteFileComboBox.Items.Count > 0) _sqliteFileComboBox.SelectedIndex = 0;
+                if (showMessage && files.Count == 0)
+                {
+                    MessageBox.Show("该文件夹中没有找到 .db、.sqlite 或 .sqlite3 文件。", "未找到 SQLite 数据库");
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                if (showMessage) MessageBox.Show(ex.Message, "读取 SQLite 文件夹失败");
+            }
+        }
         private ConnectionProfile BuildConnectionProfileFromForm()
         {
             // 测试连接和保存配置共用这一份映射，避免以后新增字段时只改到其中一处。
             return new ConnectionProfile
             {
                 ConnectionName = ConnectionnameText.Text,
-                DatabaseType = DatabaseType.MySQL,
+                DatabaseType = _databaseTypeComboBox.SelectedIndex == 1 ? DatabaseType.SQLite : DatabaseType.MySQL,
                 Host = HostText.Text,
                 Port = uint.TryParse(PortText.Text, out uint port) ? port : 0,
                 UserName = UserText.Text,
@@ -488,14 +603,21 @@ namespace c_lan
                 CharacterSet = NullIfWhiteSpace(CharacterSetComboBox.Text),
                 SSLmode = SslModeComboBox.Text,
                 SavePassword = SavePasswordCheckBox.Checked,
-                ConnectionTimeout = (uint)TimeoutNumericUpDown.Value
+                ConnectionTimeout = (uint)TimeoutNumericUpDown.Value,
+                DatabaseFilePath = _databaseTypeComboBox.SelectedIndex == 1 ? _sqliteFileComboBox.SelectedItem?.ToString() ?? String.Empty : String.Empty
             };
         }
 
         private void FillFormFromProfile(ConnectionProfile profile)
         {
+            _databaseTypeComboBox.SelectedIndex = profile.DatabaseType == DatabaseType.SQLite ? 1 : 0;
             ConnectionnameText.Text = profile.ConnectionName;
-            HostText.Text = profile.Host;
+            HostText.Text = profile.DatabaseType == DatabaseType.SQLite ? Path.GetDirectoryName(profile.DatabaseFilePath) ?? String.Empty : profile.Host;
+            if (profile.DatabaseType == DatabaseType.SQLite)
+            {
+                RefreshSqliteFiles(showMessage: false);
+                _sqliteFileComboBox.SelectedItem = profile.DatabaseFilePath;
+            }
             PortText.Text = profile.Port == 0 ? String.Empty : profile.Port.ToString();
             UserText.Text = profile.UserName;
             PasswordText.Text = profile.Password;

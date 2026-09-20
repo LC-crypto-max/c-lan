@@ -229,6 +229,7 @@ namespace c_lan.Data
                 result.RowCount = table.Rows.Count;
                 result.IsTruncated = isTruncated;
             }
+
             catch (OperationCanceledException)
             {
                 result.IsSuccess = false;
@@ -250,10 +251,16 @@ namespace c_lan.Data
         //执行查询操作
         public async Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, QueryRequest request, CancellationToken token)
         {
-            var connectionString = MysqlConnectionStringBuilder(profile);
             QueryResult queryresult = new QueryResult();
             Stopwatch stopwatch = Stopwatch.StartNew();
             try {
+                if (string.IsNullOrWhiteSpace(request.DatabaseName))
+                {
+                    queryresult.ErrorMessage = "请先选择数据库";
+                    return queryresult;
+                }
+
+                var connectionString = MysqlConnectionStringBuilder(profile, request.DatabaseName);
                 using var conn = new MySqlConnection(connectionString);
                 await conn.OpenAsync(token);
                 using var cmd = new MySqlCommand(request.SqlText, conn);
@@ -292,13 +299,17 @@ namespace c_lan.Data
             return queryresult;
         }
         //连接器需要，构建连接字符串
-        private string MysqlConnectionStringBuilder(ConnectionProfile profile){
+        private string MysqlConnectionStringBuilder(ConnectionProfile profile, string? databaseName = null){
             MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder();
             builder.Server = profile.Host;
             builder.Port = profile.Port;
             builder.UserID = profile.UserName;
             builder.Password = profile.Password;
             builder.ConnectionTimeout = profile.ConnectionTimeout;
+            if (!string.IsNullOrWhiteSpace(databaseName))
+            {
+                builder.Database = databaseName;
+            }
             return builder.ToString();
         }
 

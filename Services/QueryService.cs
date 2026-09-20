@@ -20,6 +20,7 @@ namespace c_lan.Services
             //先在Service层检查输入，Provider只处理已经整理过的查询请求。
             if (profile is null) return Failed("连接信息为空");
             if (request is null) return Failed("查询请求为空");
+            request.SqlText = SqlTextNormalizer.Normalize(request.SqlText);
             string? sqlError = _validator.Validate(request.SqlText);
             if (sqlError is not null) return Failed(sqlError);
             if (request.TimeoutSeconds <= 0) return Failed("查询超时时间必须大于 0 秒");
