@@ -111,8 +111,7 @@ namespace c_lan.Data
                 using var cmd = new SqliteCommand(sql, conn) { CommandTimeout = (int)Math.Clamp(profile.ConnectionTimeout, 1u, 3600u) };
                 cmd.Parameters.AddWithValue("$fetchRows", safeMaxRows + 1);
                 using var reader = await cmd.ExecuteReaderAsync(token);
-                DataTable table = new DataTable();
-                table.Load(reader);
+                DataTable table = await ReadDataTableAsync(reader, token);
                 bool truncated = table.Rows.Count > safeMaxRows;
                 if (truncated) table.Rows.RemoveAt(table.Rows.Count - 1);
                 result.IsSuccess = true; result.Rows = table; result.RowCount = table.Rows.Count; result.IsTruncated = truncated;
@@ -137,8 +136,7 @@ namespace c_lan.Data
                 await conn.OpenAsync(token);
                 using var cmd = new SqliteCommand(request.SqlText, conn) { CommandTimeout = request.TimeoutSeconds };
                 using var reader = await cmd.ExecuteReaderAsync(token);
-                DataTable table = new DataTable();
-                table.Load(reader);
+                DataTable table = await ReadDataTableAsync(reader, token);
                 bool truncated = table.Rows.Count > safeMaxRows;
                 while (table.Rows.Count > safeMaxRows) table.Rows.RemoveAt(table.Rows.Count - 1);
                 result.IsSuccess = true; result.Rows = table; result.RowCount = table.Rows.Count; result.IsTruncated = truncated;
@@ -159,6 +157,28 @@ namespace c_lan.Data
                 DefaultTimeout = (int)Math.Clamp(profile.ConnectionTimeout, 1u, 3600u)
             };
             return builder.ToString();
+        }
+
+        private static async Task<DataTable> ReadDataTableAsync(SqliteDataReader reader, CancellationToken token)
+        {
+            DataTable table = new DataTable();
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                table.Columns.Add(reader.GetName(i), typeof(object));
+            }
+
+            while (await reader.ReadAsync(token))
+            {
+                object[] values = new object[reader.FieldCount];
+                reader.GetValues(values);
+                for (int i = 0; i < values.Length; i++)
+                {
+                    values[i] = values[i] is null ? DBNull.Value : values[i];
+                }
+                table.Rows.Add(values);
+            }
+
+            return table;
         }
 
         private static void ValidateDatabaseRequest(ConnectionProfile profile, string databaseName)
