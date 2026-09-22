@@ -1,4 +1,6 @@
 using c_lan.Utilities;
+using c_lan.Models;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 int evaluatedRows = 0;
@@ -31,6 +33,11 @@ Assert(isTruncated, "expected the result to be marked as truncated");
 Assert(evaluatedRows == 3, $"expected 3 rows to be read, got {evaluatedRows}");
 
 Console.WriteLine("Bounded query read check passed.");
+
+ElectricCheckBatchPayload payload = new() { RequestId = "r", DeviceNo = "d", Records = [new ElectricCheckRecordPayload { SourceRowId = 1, LightName = "灯", TestItemName = "项目", TestResult = "OK", LightType = "类型", TestId = "t" }] };
+string payloadJson = JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+Assert(payloadJson.Contains("\"sourceRowId\":1"), "payload must use camelCase sourceRowId");
+Console.WriteLine("Electric check payload check passed.");
 
 static void Assert(bool condition, string message)
 {

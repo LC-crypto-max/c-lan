@@ -23,8 +23,9 @@ namespace c_lan
             //对象浏览也通过Service进入Provider，Form不直接创建MysqlProvider。
             ISchemaService schemaService = new SchemaService(factory);
             IQueryService queryService = new QueryService(factory, new ReadOnlySqlValidator());
+            ElectricCheckSyncService syncService = new(new c_lan.Configuration.ElectricCheckSyncStateStore());
 
-            Form1 form1 = new Form1(connectionService, schemaService, queryService);
+            Form1 form1 = new Form1(connectionService, schemaService, queryService, syncService);
             Application.Run(form1);
         }
     }

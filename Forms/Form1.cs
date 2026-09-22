@@ -1,6 +1,7 @@
 using c_lan.Models;
 using c_lan.Services;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace c_lan
 {
@@ -9,6 +10,7 @@ namespace c_lan
         private readonly IConnectionService _connectionService;
         private readonly ISchemaService _schemaService;
         private readonly IQueryService _queryService;
+        private readonly ElectricCheckSyncService _syncService;
         private CancellationTokenSource? _cancellationTokenSource;
         private ConnectionProfile? _activeConnectionProfile;
         private readonly TreeView _databaseTreeView = new TreeView();
@@ -17,13 +19,22 @@ namespace c_lan
         private readonly Button _browseSqliteButton = new Button();
         private readonly Panel _hostInputPanel = new Panel();
         private readonly ComboBox _sqliteFileComboBox = new ComboBox();
+        private readonly TextBox _syncDeviceTextBox = new() { Width = 110, Text = Environment.MachineName };
+        private readonly CheckBox _autoSyncCheckBox = new() { Text = "自动同步", AutoSize = true };
+        private readonly Button _syncNowButton = new() { Text = "立即同步", AutoSize = true };
+        private readonly Label _syncStatusLabel = new() { Text = "同步未启动", AutoSize = true, ForeColor = Color.White };
+        private readonly NotifyIcon _notifyIcon = new() { Icon = SystemIcons.Application, Text = "电检同步", Visible = true };
+        private CancellationTokenSource? _syncLoopCancellation;
+        private Task? _syncLoopTask;
+        private bool _allowClose;
 
-        public Form1(IConnectionService connectionService, ISchemaService schemaService, IQueryService queryService)
+        public Form1(IConnectionService connectionService, ISchemaService schemaService, IQueryService queryService, ElectricCheckSyncService syncService)
         {
             InitializeComponent();
             _connectionService = connectionService;
             _schemaService = schemaService;
             _queryService = queryService;
+            _syncService = syncService;
 
             // 这些事件属于业务接线，放在 Form 代码中比手工修改 Designer 更容易阅读。
             Shown += Form1_Shown;
@@ -35,9 +46,34 @@ namespace c_lan
             ExecuteQueryButton.Click += ExecuteQueryButton_Click;
             StopQueryButton.Click += StopQueryButton_Click;
             ClearSqlButton.Click += ClearSqlButton_Click;
+            _syncNowButton.Click += SyncNowButton_Click;
+            _autoSyncCheckBox.CheckedChanged += (_, _) =>
+            {
+                if (_autoSyncCheckBox.Checked) StartSyncLoop();
+                else StopSyncLoop();
+            };
+            FormClosing += Form1_FormClosing;
+            _notifyIcon.DoubleClick += (_, _) => ShowFromTray();
+            ContextMenuStrip trayMenu = new();
+            trayMenu.Items.Add("显示窗口", null, (_, _) => ShowFromTray());
+            trayMenu.Items.Add("立即同步", null, async (_, _) => await SyncNowAsync());
+            trayMenu.Items.Add("退出", null, (_, _) => { _allowClose = true; Close(); });
+            _notifyIcon.ContextMenuStrip = trayMenu;
+            InitializeSyncUi();
             StopQueryButton.Enabled = false;
             InitializeDatabaseObjectBrowser();
             InitializeDatabaseTypeUi();
+        }
+
+        private void InitializeSyncUi()
+        {
+            FlowLayoutPanel panel = new() { Dock = DockStyle.Right, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(8, 18, 8, 0) };
+            panel.Controls.Add(new Label { Text = "设备号", AutoSize = true, ForeColor = Color.White, Padding = new Padding(0, 5, 3, 0) });
+            panel.Controls.Add(_syncDeviceTextBox);
+            panel.Controls.Add(_autoSyncCheckBox);
+            panel.Controls.Add(_syncNowButton);
+            panel.Controls.Add(_syncStatusLabel);
+            HeaderPanel.Controls.Add(panel);
         }
 
         private async void ExecuteQueryButton_Click(object? sender, EventArgs e)
@@ -135,12 +171,88 @@ namespace c_lan
                 if (firstProfile is not null)
                 {
                     FillFormFromProfile(firstProfile);
+                    if (firstProfile.DatabaseType == DatabaseType.SQLite)
+                    {
+                        _autoSyncCheckBox.Checked = true;
+                        StartSyncLoop();
+                    }
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message,"读取连接配置失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
+        }
+
+        private ElectricCheckSyncSettings BuildSyncSettings()
+        {
+            ConnectionProfile profile = BuildConnectionProfileFromForm();
+            return new ElectricCheckSyncSettings
+            {
+                Enabled = _autoSyncCheckBox.Checked,
+                DeviceNo = _syncDeviceTextBox.Text.Trim(),
+                SqliteFilePath = profile.DatabaseFilePath,
+                ServerBaseUrl = "http://172.16.28.64:8080"
+            };
+        }
+
+        private void StartSyncLoop()
+        {
+            if (_syncLoopTask is not null || !_autoSyncCheckBox.Checked) return;
+            ElectricCheckSyncSettings settings;
+            try { settings = BuildSyncSettings(); }
+            catch (Exception ex) { _syncStatusLabel.Text = ex.Message; return; }
+            _syncLoopCancellation = new CancellationTokenSource();
+            _syncLoopTask = _syncService.RunAsync(settings, result =>
+            {
+                if (!IsDisposed && IsHandleCreated) BeginInvoke(() => _syncStatusLabel.Text = result.Message);
+            }, _syncLoopCancellation.Token);
+        }
+
+        private void StopSyncLoop()
+        {
+            _syncLoopCancellation?.Cancel();
+            _syncLoopCancellation?.Dispose();
+            _syncLoopCancellation = null;
+            _syncLoopTask = null;
+            _syncStatusLabel.Text = "自动同步已停止";
+        }
+
+        private async void SyncNowButton_Click(object? sender, EventArgs e) => await SyncNowAsync();
+
+        private async Task SyncNowAsync()
+        {
+            try
+            {
+                _syncNowButton.Enabled = false;
+                _syncStatusLabel.Text = "同步中...";
+                ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(BuildSyncSettings(), CancellationToken.None);
+                _syncStatusLabel.Text = result.Message;
+            }
+            catch (Exception ex) { _syncStatusLabel.Text = "同步失败：" + ex.Message; }
+            finally { _syncNowButton.Enabled = true; }
+        }
+
+        private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            if (!_allowClose)
+            {
+                e.Cancel = true;
+                Hide();
+                _notifyIcon.ShowBalloonTip(1500, "电检同步", "程序已最小化到系统托盘，仍会继续同步。", ToolTipIcon.Info);
+                return;
+            }
+            _syncLoopCancellation?.Cancel();
+            _notifyIcon.Visible = false;
+            _notifyIcon.Dispose();
+            _syncService.Dispose();
+        }
+
+        private void ShowFromTray()
+        {
+            Show();
+            WindowState = FormWindowState.Normal;
+            Activate();
         }
 
         private async void TestButton_Click(object? sender, EventArgs e)
@@ -192,6 +304,7 @@ namespace c_lan
                 List<string> databases = await _schemaService.GetDatabasesAsync(profile, cancellation.Token);
 
                 _activeConnectionProfile = profile;
+                if (profile.DatabaseType == DatabaseType.SQLite && _autoSyncCheckBox.Checked) StartSyncLoop();
                 FillDatabaseTree(databases);
 
                 //数据库下拉框仍会在后续查询功能中使用，因此这里同步填充。
