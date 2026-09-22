@@ -37,6 +37,7 @@ Console.WriteLine("Bounded query read check passed.");
 ElectricCheckBatchPayload payload = new() { RequestId = "r", DeviceNo = "d", Records = [new ElectricCheckRecordPayload { SourceRowId = 1, LightName = "灯", TestItemName = "项目", TestResult = "OK", LightType = "类型", TestId = "t" }] };
 string payloadJson = JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 Assert(payloadJson.Contains("\"sourceRowId\":1"), "payload must use camelCase sourceRowId");
+Assert(payloadJson.Contains("\"testDateTime\":\""), "payload must contain formatted testDateTime");
 Console.WriteLine("Electric check payload check passed.");
 
 static void Assert(bool condition, string message)

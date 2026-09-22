@@ -35,9 +35,24 @@ public sealed class ElectricCheckSyncService : IDisposable
                     DeviceNo = settings.DeviceNo,
                     Records = records
                 };
-                using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-                    new Uri(new Uri(settings.ServerBaseUrl.TrimEnd('/') + "/"), "openapi/electric-check/records:batch"), payload, JsonOptions, token);
-                response.EnsureSuccessStatusCode();
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.PostAsJsonAsync(
+                        new Uri(new Uri(settings.ServerBaseUrl.TrimEnd('/') + "/"), "openapi/electric-check/records:batch"), payload, JsonOptions, token);
+                }
+                catch (HttpRequestException ex)
+                {
+                    throw new InvalidOperationException($"无法连接服务端 {settings.ServerBaseUrl}: {ex.Message}", ex);
+                }
+                using (response)
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        string body = await response.Content.ReadAsStringAsync(token);
+                        throw new InvalidOperationException($"服务端返回 {(int)response.StatusCode} {response.ReasonPhrase}: {body}");
+                    }
+                }
                 last = records[^1].SourceRowId;
                 await _stateStore.SaveAsync(StateKey(settings), last, token);
                 total += records.Count;
@@ -75,7 +90,7 @@ public sealed class ElectricCheckSyncService : IDisposable
     private static ElectricCheckRecordPayload Map(SqliteDataReader reader) => new()
     {
         SourceRowId = reader.GetInt64(0),
-        TestDateTime = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture),
+        TestDateTime = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture).ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture),
         LightName = Required(reader.GetValue(2)),
         TestItemName = Required(reader.GetValue(3)),
         HighLimit = Optional(reader.GetValue(4)),
