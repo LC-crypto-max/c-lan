@@ -171,11 +171,6 @@ namespace c_lan
                 if (firstProfile is not null)
                 {
                     FillFormFromProfile(firstProfile);
-                    if (firstProfile.DatabaseType == DatabaseType.SQLite)
-                    {
-                        _autoSyncCheckBox.Checked = true;
-                        StartSyncLoop();
-                    }
                 }
             }
             catch (Exception ex)
@@ -228,6 +223,7 @@ namespace c_lan
                 _syncStatusLabel.Text = "同步中...";
                 ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(BuildSyncSettings(), CancellationToken.None);
                 _syncStatusLabel.Text = result.Message;
+                _autoSyncCheckBox.Checked = true;
             }
             catch (Exception ex) { _syncStatusLabel.Text = "同步失败：" + ex.Message; }
             finally { _syncNowButton.Enabled = true; }
