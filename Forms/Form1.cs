@@ -19,13 +19,6 @@ namespace c_lan
         private readonly Button _browseSqliteButton = new Button();
         private readonly Panel _hostInputPanel = new Panel();
         private readonly ComboBox _sqliteFileComboBox = new ComboBox();
-        private readonly TextBox _syncDeviceTextBox = new() { Width = 110, Text = Environment.MachineName };
-        private readonly TextBox _syncServerTextBox = new() { Width = 180, Text = "http://172.16.28.64:8080" };
-        private readonly CheckBox _autoSyncCheckBox = new() { Text = "自动同步", AutoSize = true, ForeColor = Color.White };
-        private readonly Button _fullSyncButton = new() { Text = "全量同步", AutoSize = true, ForeColor = Color.White, BackColor = Color.FromArgb(99, 115, 135), FlatStyle = FlatStyle.Flat };
-        private readonly Button _syncNowButton = new() { Text = "立即同步", AutoSize = true, ForeColor = Color.White, BackColor = Color.FromArgb(52, 88, 125), FlatStyle = FlatStyle.Flat };
-        private readonly Label _syncStatusLabel = new() { Text = "同步未启动", AutoSize = true, ForeColor = Color.White };
-        private readonly NotifyIcon _notifyIcon = new() { Icon = SystemIcons.Application, Text = "电检同步", Visible = true };
         private CancellationTokenSource? _syncLoopCancellation;
         private Task? _syncLoopTask;
         private bool _allowClose;
@@ -62,24 +55,9 @@ namespace c_lan
             trayMenu.Items.Add("立即同步", null, async (_, _) => await SyncNowAsync());
             trayMenu.Items.Add("退出", null, (_, _) => { _allowClose = true; Close(); });
             _notifyIcon.ContextMenuStrip = trayMenu;
-            InitializeSyncUi();
             StopQueryButton.Enabled = false;
             InitializeDatabaseObjectBrowser();
             InitializeDatabaseTypeUi();
-        }
-
-        private void InitializeSyncUi()
-        {
-            FlowLayoutPanel panel = new() { Dock = DockStyle.Right, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(8, 18, 8, 0) };
-            panel.Controls.Add(new Label { Text = "设备号", AutoSize = true, ForeColor = Color.White, Padding = new Padding(0, 5, 3, 0) });
-            panel.Controls.Add(_syncDeviceTextBox);
-            panel.Controls.Add(new Label { Text = "服务端", AutoSize = true, ForeColor = Color.White, Padding = new Padding(8, 5, 3, 0) });
-            panel.Controls.Add(_syncServerTextBox);
-            panel.Controls.Add(_autoSyncCheckBox);
-            panel.Controls.Add(_fullSyncButton);
-            panel.Controls.Add(_syncNowButton);
-            panel.Controls.Add(_syncStatusLabel);
-            HeaderPanel.Controls.Add(panel);
         }
 
         private async void ExecuteQueryButton_Click(object? sender, EventArgs e)

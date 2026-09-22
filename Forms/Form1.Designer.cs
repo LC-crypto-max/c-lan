@@ -17,9 +17,20 @@ namespace c_lan
 
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             HeaderPanel = new Panel();
-            HeaderSubtitleLabel = new Label();
+            _syncPanel = new FlowLayoutPanel();
+            _syncDeviceLabel = new Label();
+            _syncDeviceTextBox = new TextBox();
+            _syncServerLabel = new Label();
+            _syncServerTextBox = new TextBox();
+            _autoSyncCheckBox = new CheckBox();
+            _fullSyncButton = new Button();
+            _syncNowButton = new Button();
+            _syncStatusLabel = new Label();
             HeaderTitleLabel = new Label();
+            _notifyIcon = new NotifyIcon(components);
             MainSplitContainer = new SplitContainer();
             ConnectionPanel = new Panel();
             ConnectionFieldsTable = new TableLayoutPanel();
@@ -80,6 +91,7 @@ namespace c_lan
             StatusSpringLabel = new ToolStripStatusLabel();
             CurrentDatabaseStatusLabel = new ToolStripStatusLabel();
             HeaderPanel.SuspendLayout();
+            _syncPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)MainSplitContainer).BeginInit();
             MainSplitContainer.Panel1.SuspendLayout();
             MainSplitContainer.Panel2.SuspendLayout();
@@ -110,7 +122,7 @@ namespace c_lan
             // HeaderPanel
             // 
             HeaderPanel.BackColor = Color.FromArgb(27, 43, 65);
-            HeaderPanel.Controls.Add(HeaderSubtitleLabel);
+            HeaderPanel.Controls.Add(_syncPanel);
             HeaderPanel.Controls.Add(HeaderTitleLabel);
             HeaderPanel.Dock = DockStyle.Top;
             HeaderPanel.Location = new Point(0, 0);
@@ -119,15 +131,115 @@ namespace c_lan
             HeaderPanel.Size = new Size(1384, 72);
             HeaderPanel.TabIndex = 0;
             // 
-            // HeaderSubtitleLabel
+            // _syncPanel
             // 
-            HeaderSubtitleLabel.AutoSize = true;
-            HeaderSubtitleLabel.ForeColor = Color.FromArgb(174, 190, 209);
-            HeaderSubtitleLabel.Location = new Point(211, 36);
-            HeaderSubtitleLabel.Name = "HeaderSubtitleLabel";
-            HeaderSubtitleLabel.Size = new Size(216, 20);
-            HeaderSubtitleLabel.TabIndex = 1;
-            HeaderSubtitleLabel.Text = "连接配置 · SQL 查询 · 结果预览";
+            _syncPanel.AutoSize = true;
+            _syncPanel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            _syncPanel.Controls.Add(_syncDeviceLabel);
+            _syncPanel.Controls.Add(_syncDeviceTextBox);
+            _syncPanel.Controls.Add(_syncServerLabel);
+            _syncPanel.Controls.Add(_syncServerTextBox);
+            _syncPanel.Controls.Add(_autoSyncCheckBox);
+            _syncPanel.Controls.Add(_fullSyncButton);
+            _syncPanel.Controls.Add(_syncNowButton);
+            _syncPanel.Controls.Add(_syncStatusLabel);
+            _syncPanel.Dock = DockStyle.Right;
+            _syncPanel.Location = new Point(559, 11);
+            _syncPanel.Name = "_syncPanel";
+            _syncPanel.Padding = new Padding(8, 7, 8, 0);
+            _syncPanel.Size = new Size(801, 53);
+            _syncPanel.TabIndex = 2;
+            _syncPanel.WrapContents = false;
+            // 
+            // _syncDeviceLabel
+            // 
+            _syncDeviceLabel.AutoSize = true;
+            _syncDeviceLabel.ForeColor = Color.White;
+            _syncDeviceLabel.Location = new Point(8, 14);
+            _syncDeviceLabel.Margin = new Padding(0, 7, 3, 0);
+            _syncDeviceLabel.Name = "_syncDeviceLabel";
+            _syncDeviceLabel.Size = new Size(54, 20);
+            _syncDeviceLabel.TabIndex = 0;
+            _syncDeviceLabel.Text = "设备号";
+            // 
+            // _syncDeviceTextBox
+            // 
+            _syncDeviceTextBox.Location = new Point(65, 10);
+            _syncDeviceTextBox.Margin = new Padding(0, 3, 8, 0);
+            _syncDeviceTextBox.Name = "_syncDeviceTextBox";
+            _syncDeviceTextBox.Size = new Size(110, 27);
+            _syncDeviceTextBox.TabIndex = 1;
+            _syncDeviceTextBox.Text = "CZ6-003-1419";
+            // 
+            // _syncServerLabel
+            // 
+            _syncServerLabel.AutoSize = true;
+            _syncServerLabel.ForeColor = Color.White;
+            _syncServerLabel.Location = new Point(183, 14);
+            _syncServerLabel.Margin = new Padding(0, 7, 3, 0);
+            _syncServerLabel.Name = "_syncServerLabel";
+            _syncServerLabel.Size = new Size(54, 20);
+            _syncServerLabel.TabIndex = 2;
+            _syncServerLabel.Text = "服务端";
+            // 
+            // _syncServerTextBox
+            // 
+            _syncServerTextBox.Location = new Point(240, 10);
+            _syncServerTextBox.Margin = new Padding(0, 3, 8, 0);
+            _syncServerTextBox.Name = "_syncServerTextBox";
+            _syncServerTextBox.Size = new Size(180, 27);
+            _syncServerTextBox.TabIndex = 3;
+            _syncServerTextBox.Text = "http://172.16.28.64:8080";
+            // 
+            // _autoSyncCheckBox
+            // 
+            _autoSyncCheckBox.AutoSize = true;
+            _autoSyncCheckBox.ForeColor = Color.White;
+            _autoSyncCheckBox.Location = new Point(428, 12);
+            _autoSyncCheckBox.Margin = new Padding(0, 5, 8, 0);
+            _autoSyncCheckBox.Name = "_autoSyncCheckBox";
+            _autoSyncCheckBox.Size = new Size(91, 24);
+            _autoSyncCheckBox.TabIndex = 4;
+            _autoSyncCheckBox.Text = "自动同步";
+            // 
+            // _fullSyncButton
+            // 
+            _fullSyncButton.AutoSize = true;
+            _fullSyncButton.BackColor = Color.FromArgb(99, 115, 135);
+            _fullSyncButton.FlatStyle = FlatStyle.Flat;
+            _fullSyncButton.ForeColor = Color.White;
+            _fullSyncButton.Location = new Point(527, 10);
+            _fullSyncButton.Margin = new Padding(0, 3, 4, 0);
+            _fullSyncButton.Name = "_fullSyncButton";
+            _fullSyncButton.Size = new Size(85, 32);
+            _fullSyncButton.TabIndex = 5;
+            _fullSyncButton.Text = "全量同步";
+            _fullSyncButton.UseVisualStyleBackColor = false;
+            // 
+            // _syncNowButton
+            // 
+            _syncNowButton.AutoSize = true;
+            _syncNowButton.BackColor = Color.FromArgb(52, 88, 125);
+            _syncNowButton.FlatStyle = FlatStyle.Flat;
+            _syncNowButton.ForeColor = Color.White;
+            _syncNowButton.Location = new Point(616, 10);
+            _syncNowButton.Margin = new Padding(0, 3, 8, 0);
+            _syncNowButton.Name = "_syncNowButton";
+            _syncNowButton.Size = new Size(85, 32);
+            _syncNowButton.TabIndex = 6;
+            _syncNowButton.Text = "立即同步";
+            _syncNowButton.UseVisualStyleBackColor = false;
+            // 
+            // _syncStatusLabel
+            // 
+            _syncStatusLabel.AutoSize = true;
+            _syncStatusLabel.ForeColor = Color.White;
+            _syncStatusLabel.Location = new Point(709, 14);
+            _syncStatusLabel.Margin = new Padding(0, 7, 0, 0);
+            _syncStatusLabel.Name = "_syncStatusLabel";
+            _syncStatusLabel.Size = new Size(84, 20);
+            _syncStatusLabel.TabIndex = 7;
+            _syncStatusLabel.Text = "同步未启动";
             // 
             // HeaderTitleLabel
             // 
@@ -139,6 +251,12 @@ namespace c_lan
             HeaderTitleLabel.Size = new Size(204, 36);
             HeaderTitleLabel.TabIndex = 0;
             HeaderTitleLabel.Text = "多数据库工作台";
+            // 
+            // _notifyIcon
+            // 
+            _notifyIcon.Icon = (Icon)resources.GetObject("_notifyIcon.Icon");
+            _notifyIcon.Text = "电检同步";
+            _notifyIcon.Visible = true;
             // 
             // MainSplitContainer
             // 
@@ -836,20 +954,20 @@ namespace c_lan
             // 
             ConnectionStatusLabel.ForeColor = Color.FromArgb(112, 122, 136);
             ConnectionStatusLabel.Name = "ConnectionStatusLabel";
-            ConnectionStatusLabel.Size = new Size(68, 20);
+            ConnectionStatusLabel.Size = new Size(70, 20);
             ConnectionStatusLabel.Text = "● 未连接";
             // 
             // StatusSpringLabel
             // 
             StatusSpringLabel.Name = "StatusSpringLabel";
-            StatusSpringLabel.Size = new Size(1187, 20);
+            StatusSpringLabel.Size = new Size(1178, 20);
             StatusSpringLabel.Spring = true;
             // 
             // CurrentDatabaseStatusLabel
             // 
             CurrentDatabaseStatusLabel.ForeColor = Color.FromArgb(112, 122, 136);
             CurrentDatabaseStatusLabel.Name = "CurrentDatabaseStatusLabel";
-            CurrentDatabaseStatusLabel.Size = new Size(114, 20);
+            CurrentDatabaseStatusLabel.Size = new Size(121, 20);
             CurrentDatabaseStatusLabel.Text = "数据库：未选择";
             // 
             // Form1
@@ -869,6 +987,8 @@ namespace c_lan
             WindowState = FormWindowState.Maximized;
             HeaderPanel.ResumeLayout(false);
             HeaderPanel.PerformLayout();
+            _syncPanel.ResumeLayout(false);
+            _syncPanel.PerformLayout();
             MainSplitContainer.Panel1.ResumeLayout(false);
             MainSplitContainer.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)MainSplitContainer).EndInit();
@@ -909,7 +1029,16 @@ namespace c_lan
         #endregion
 
         private Panel HeaderPanel;
-        private Label HeaderSubtitleLabel;
+        private FlowLayoutPanel _syncPanel;
+        private Label _syncDeviceLabel;
+        private TextBox _syncDeviceTextBox;
+        private Label _syncServerLabel;
+        private TextBox _syncServerTextBox;
+        private CheckBox _autoSyncCheckBox;
+        private Button _fullSyncButton;
+        private Button _syncNowButton;
+        private Label _syncStatusLabel;
+        private NotifyIcon _notifyIcon;
         private Label HeaderTitleLabel;
         private SplitContainer MainSplitContainer;
         private Panel ConnectionPanel;
