@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="c#lan.csproj" />
+  <Project Path="Checks/c-lan.Checks.csproj" />
 </Solution>

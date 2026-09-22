@@ -1,5 +1,6 @@
 
 using c_lan.Models;
+using c_lan.Utilities;
 
 using MySqlConnector;
 
@@ -266,14 +267,9 @@ namespace c_lan.Data
                 using var cmd = new MySqlCommand(request.SqlText, conn);
                 cmd.CommandTimeout = request.TimeoutSeconds;
                 using var reader = await cmd.ExecuteReaderAsync(token);
-                var datatable = new DataTable();
-                datatable.Load(reader);
                 int safeMaxRows = Math.Clamp(request.MaxRows, 1, 2000);
-                bool isTruncated = datatable.Rows.Count > safeMaxRows;
-                while (datatable.Rows.Count > safeMaxRows)
-                {
-                    datatable.Rows.RemoveAt(datatable.Rows.Count - 1);
-                }
+                (DataTable datatable, bool isTruncated) =
+                    await BoundedDataTableReader.LoadAsync(reader, safeMaxRows, token);
                 queryresult.IsSuccess = true;
                 queryresult.RowCount = datatable.Rows.Count;
                 queryresult.Rows = datatable;
