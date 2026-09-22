@@ -203,7 +203,7 @@ namespace c_lan
             _syncLoopCancellation = new CancellationTokenSource();
             _syncLoopTask = _syncService.RunAsync(settings, result =>
             {
-                if (!IsDisposed && IsHandleCreated) BeginInvoke(() => _syncStatusLabel.Text = result.Message);
+                if (!IsDisposed && IsHandleCreated) BeginInvoke(() => ShowSyncResult(result));
             }, _syncLoopCancellation.Token);
         }
 
@@ -225,11 +225,27 @@ namespace c_lan
                 _syncNowButton.Enabled = false;
                 _syncStatusLabel.Text = "同步中...";
                 ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(BuildSyncSettings(), CancellationToken.None);
-                _syncStatusLabel.Text = result.Message;
+                ShowSyncResult(result);
                 _autoSyncCheckBox.Checked = true;
             }
-            catch (Exception ex) { _syncStatusLabel.Text = "同步失败：" + ex.Message; }
+            catch (Exception ex)
+            {
+                _syncStatusLabel.Text = "同步失败：" + ex.Message;
+                MessageTextBox.Text = ex.Message;
+                ResultTabControl.SelectedTab = MessageTabPage;
+            }
             finally { _syncNowButton.Enabled = true; }
+        }
+
+        private void ShowSyncResult(ElectricCheckSyncResult result)
+        {
+            _syncStatusLabel.Text = result.Message;
+            MessageTextBox.Text = result.Message;
+            if (result.Message.StartsWith("服务端返回", StringComparison.Ordinal) ||
+                result.Message.StartsWith("无法连接服务端", StringComparison.Ordinal))
+            {
+                ResultTabControl.SelectedTab = MessageTabPage;
+            }
         }
 
         private void Form1_FormClosing(object? sender, FormClosingEventArgs e)

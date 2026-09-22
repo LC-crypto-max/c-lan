@@ -1,5 +1,6 @@
 using c_lan.Utilities;
 using c_lan.Models;
+using c_lan.Services;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
@@ -39,6 +40,10 @@ string payloadJson = JsonSerializer.Serialize(payload, new JsonSerializerOptions
 Assert(payloadJson.Contains("\"sourceRowId\":1"), "payload must use camelCase sourceRowId");
 Assert(payloadJson.Contains("\"testDateTime\":\""), "payload must contain formatted testDateTime");
 Console.WriteLine("Electric check payload check passed.");
+
+string apiDate = ElectricCheckSyncService.FormatTestDateTimeForApi("2026-09-21 16:29:03.0931445");
+Assert(apiDate == "2026-09-21 16:29:03.0931445", $"unexpected API date: {apiDate}");
+Console.WriteLine("Electric check date format check passed.");
 
 static void Assert(bool condition, string message)
 {

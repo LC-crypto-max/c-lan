@@ -50,7 +50,7 @@ public sealed class ElectricCheckSyncService : IDisposable
                     if (!response.IsSuccessStatusCode)
                     {
                         string body = await response.Content.ReadAsStringAsync(token);
-                        throw new InvalidOperationException($"服务端返回 {(int)response.StatusCode} {response.ReasonPhrase}: {body}");
+                        throw new InvalidOperationException($"服务端返回 {(int)response.StatusCode} {response.ReasonPhrase}:\r\n{body}");
                     }
                 }
                 last = records[^1].SourceRowId;
@@ -90,7 +90,7 @@ public sealed class ElectricCheckSyncService : IDisposable
     private static ElectricCheckRecordPayload Map(SqliteDataReader reader) => new()
     {
         SourceRowId = reader.GetInt64(0),
-        TestDateTime = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture).ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture),
+        TestDateTime = FormatTestDateTimeForApi(reader.GetString(1)),
         LightName = Required(reader.GetValue(2)),
         TestItemName = Required(reader.GetValue(3)),
         HighLimit = Optional(reader.GetValue(4)),
@@ -107,6 +107,9 @@ public sealed class ElectricCheckSyncService : IDisposable
 
     private static string Required(object value) => Optional(value) ?? throw new InvalidDataException("电检记录存在必填字段为空");
     private static string? Optional(object value) => value is DBNull ? null : value?.ToString()?.Trim() is { Length: > 0 } text ? text : null;
+    public static string FormatTestDateTimeForApi(string value) =>
+        DateTime.Parse(value, CultureInfo.InvariantCulture)
+            .ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture);
     private static string QuoteIdentifier(string value) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("表名不能为空") : "\"" + value.Replace("\"", "\"\"") + "\"";
     private static string StateKey(ElectricCheckSyncSettings s) => $"{s.DeviceNo}|{s.SqliteFilePath}|{s.TableName}";
     private static void Validate(ElectricCheckSyncSettings s)
