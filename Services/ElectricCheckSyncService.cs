@@ -112,6 +112,7 @@ public sealed class ElectricCheckSyncService : IDisposable
     private static void Validate(ElectricCheckSyncSettings s)
     {
         if (string.IsNullOrWhiteSpace(s.DeviceNo) || string.IsNullOrWhiteSpace(s.SqliteFilePath) || string.IsNullOrWhiteSpace(s.ServerBaseUrl)) throw new ArgumentException("同步配置不完整");
+        if (!string.Equals(s.TableName, "ElectricCheck", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("同步只支持 ElectricCheck 表");
         if (!File.Exists(s.SqliteFilePath)) throw new FileNotFoundException("SQLite 文件不存在", s.SqliteFilePath);
     }
 
