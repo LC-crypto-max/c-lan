@@ -24,6 +24,14 @@ public sealed class ElectricCheckSyncStateStore
         await File.WriteAllTextAsync(path, json, token);
     }
 
+    public Task ResetAsync(string key, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        string path = PathFor(key);
+        if (File.Exists(path)) File.Delete(path);
+        return Task.CompletedTask;
+    }
+
     private string PathFor(string key)
     {
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(key));

@@ -484,3 +484,4 @@ $RECYCLE.BIN/
 # Project documentation and JSON files
 /docs/
 *.json
+deploy/

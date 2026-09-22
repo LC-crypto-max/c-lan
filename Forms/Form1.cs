@@ -21,7 +21,8 @@ namespace c_lan
         private readonly ComboBox _sqliteFileComboBox = new ComboBox();
         private readonly TextBox _syncDeviceTextBox = new() { Width = 110, Text = Environment.MachineName };
         private readonly TextBox _syncServerTextBox = new() { Width = 180, Text = "http://172.16.28.64:8080" };
-        private readonly CheckBox _autoSyncCheckBox = new() { Text = "自动同步", AutoSize = true };
+        private readonly CheckBox _autoSyncCheckBox = new() { Text = "自动同步", AutoSize = true, ForeColor = Color.White };
+        private readonly Button _fullSyncButton = new() { Text = "全量同步", AutoSize = true, ForeColor = Color.White, BackColor = Color.FromArgb(99, 115, 135), FlatStyle = FlatStyle.Flat };
         private readonly Button _syncNowButton = new() { Text = "立即同步", AutoSize = true, ForeColor = Color.White, BackColor = Color.FromArgb(52, 88, 125), FlatStyle = FlatStyle.Flat };
         private readonly Label _syncStatusLabel = new() { Text = "同步未启动", AutoSize = true, ForeColor = Color.White };
         private readonly NotifyIcon _notifyIcon = new() { Icon = SystemIcons.Application, Text = "电检同步", Visible = true };
@@ -47,6 +48,7 @@ namespace c_lan
             ExecuteQueryButton.Click += ExecuteQueryButton_Click;
             StopQueryButton.Click += StopQueryButton_Click;
             ClearSqlButton.Click += ClearSqlButton_Click;
+            _fullSyncButton.Click += FullSyncButton_Click;
             _syncNowButton.Click += SyncNowButton_Click;
             _autoSyncCheckBox.CheckedChanged += (_, _) =>
             {
@@ -74,6 +76,7 @@ namespace c_lan
             panel.Controls.Add(new Label { Text = "服务端", AutoSize = true, ForeColor = Color.White, Padding = new Padding(8, 5, 3, 0) });
             panel.Controls.Add(_syncServerTextBox);
             panel.Controls.Add(_autoSyncCheckBox);
+            panel.Controls.Add(_fullSyncButton);
             panel.Controls.Add(_syncNowButton);
             panel.Controls.Add(_syncStatusLabel);
             HeaderPanel.Controls.Add(panel);
@@ -218,13 +221,18 @@ namespace c_lan
 
         private async void SyncNowButton_Click(object? sender, EventArgs e) => await SyncNowAsync();
 
-        private async Task SyncNowAsync()
+        private async void FullSyncButton_Click(object? sender, EventArgs e) => await SyncNowAsync(resetCursor: true);
+
+        private async Task SyncNowAsync(bool resetCursor = false)
         {
             try
             {
                 _syncNowButton.Enabled = false;
+                _fullSyncButton.Enabled = false;
                 _syncStatusLabel.Text = "同步中...";
-                ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(BuildSyncSettings(), CancellationToken.None);
+                ElectricCheckSyncSettings settings = BuildSyncSettings();
+                if (resetCursor) await _syncService.ResetSyncStateAsync(settings, CancellationToken.None);
+                ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(settings, CancellationToken.None);
                 ShowSyncResult(result);
                 _autoSyncCheckBox.Checked = true;
             }
@@ -234,7 +242,11 @@ namespace c_lan
                 MessageTextBox.Text = ex.Message;
                 ResultTabControl.SelectedTab = MessageTabPage;
             }
-            finally { _syncNowButton.Enabled = true; }
+            finally
+            {
+                _syncNowButton.Enabled = true;
+                _fullSyncButton.Enabled = true;
+            }
         }
 
         private void ShowSyncResult(ElectricCheckSyncResult result)

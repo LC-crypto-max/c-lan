@@ -1,4 +1,5 @@
 using c_lan.Utilities;
+using c_lan.Configuration;
 using c_lan.Models;
 using c_lan.Services;
 using System.Text.Json;
@@ -44,6 +45,13 @@ Console.WriteLine("Electric check payload check passed.");
 string apiDate = ElectricCheckSyncService.FormatTestDateTimeForApi("2026-09-21 16:29:03.0931445");
 Assert(apiDate == "2026-09-21 16:29:03.0931445", $"unexpected API date: {apiDate}");
 Console.WriteLine("Electric check date format check passed.");
+
+ElectricCheckSyncStateStore stateStore = new();
+string stateKey = $"check-{Guid.NewGuid():N}";
+await stateStore.SaveAsync(stateKey, 123, CancellationToken.None);
+await stateStore.ResetAsync(stateKey, CancellationToken.None);
+Assert(await stateStore.LoadAsync(stateKey, CancellationToken.None) == 0, "sync state reset must clear the cursor");
+Console.WriteLine("Electric check state reset check passed.");
 
 static void Assert(bool condition, string message)
 {

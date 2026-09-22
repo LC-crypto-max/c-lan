@@ -16,6 +16,14 @@ public sealed class ElectricCheckSyncService : IDisposable
 
     public ElectricCheckSyncService(ElectricCheckSyncStateStore stateStore) => _stateStore = stateStore;
 
+    public async Task ResetSyncStateAsync(ElectricCheckSyncSettings settings, CancellationToken token)
+    {
+        Validate(settings);
+        await _gate.WaitAsync(token);
+        try { await _stateStore.ResetAsync(StateKey(settings), token); }
+        finally { _gate.Release(); }
+    }
+
     public async Task<ElectricCheckSyncResult> SyncOnceAsync(ElectricCheckSyncSettings settings, CancellationToken token)
     {
         Validate(settings);
@@ -111,7 +119,7 @@ public sealed class ElectricCheckSyncService : IDisposable
         DateTime.Parse(value, CultureInfo.InvariantCulture)
             .ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture);
     private static string QuoteIdentifier(string value) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("表名不能为空") : "\"" + value.Replace("\"", "\"\"") + "\"";
-    private static string StateKey(ElectricCheckSyncSettings s) => $"{s.DeviceNo}|{s.SqliteFilePath}|{s.TableName}";
+    private static string StateKey(ElectricCheckSyncSettings s) => $"{s.ServerBaseUrl.TrimEnd('/')}|{s.DeviceNo}|{Path.GetFullPath(s.SqliteFilePath)}|{s.TableName}";
     private static void Validate(ElectricCheckSyncSettings s)
     {
         if (string.IsNullOrWhiteSpace(s.DeviceNo) || string.IsNullOrWhiteSpace(s.SqliteFilePath) || string.IsNullOrWhiteSpace(s.ServerBaseUrl)) throw new ArgumentException("同步配置不完整");
