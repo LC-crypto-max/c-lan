@@ -484,4 +484,9 @@ $RECYCLE.BIN/
 # Project documentation and JSON files
 /docs/
 *.json
-deploy/
+
+# Local databases and production deployment artifacts
+*.db
+*.sqlite
+*.sqlite3
+/deploy/

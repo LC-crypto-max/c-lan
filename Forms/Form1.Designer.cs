@@ -169,7 +169,7 @@ namespace c_lan
             _syncDeviceTextBox.Name = "_syncDeviceTextBox";
             _syncDeviceTextBox.Size = new Size(110, 27);
             _syncDeviceTextBox.TabIndex = 1;
-            _syncDeviceTextBox.Text = "CZ6-003-1419";
+            _syncDeviceTextBox.Text = Environment.MachineName;
             // 
             // _syncServerLabel
             // 
@@ -187,9 +187,9 @@ namespace c_lan
             _syncServerTextBox.Location = new Point(240, 10);
             _syncServerTextBox.Margin = new Padding(0, 3, 8, 0);
             _syncServerTextBox.Name = "_syncServerTextBox";
+            _syncServerTextBox.PlaceholderText = "例如：http://服务器地址:8080";
             _syncServerTextBox.Size = new Size(180, 27);
             _syncServerTextBox.TabIndex = 3;
-            _syncServerTextBox.Text = "http://172.16.28.64:8080";
             // 
             // _autoSyncCheckBox
             // 
