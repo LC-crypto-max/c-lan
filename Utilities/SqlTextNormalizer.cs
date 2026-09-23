@@ -7,6 +7,7 @@ namespace c_lan.Utilities
     {
         public static string Normalize(string sql)
         {
+            // 先还原界面或剪贴板带来的 HTML/不可见字符，再处理 SQL 文本本身。
             string text = sql;
             if (sql.Contains("&#", StringComparison.Ordinal) || sql.Contains("&nbsp;", StringComparison.OrdinalIgnoreCase))
             {
@@ -37,6 +38,7 @@ namespace c_lan.Utilities
 
                 if (!inSingleQuote && !inDoubleQuote && current == '\\')
                 {
+                    // 只在引号外处理转义下划线，避免改动字符串常量里的原始内容。
                     int slashStart = i;
                     while (i + 1 < text.Length && text[i + 1] == '\\') i++;
                     if (i + 1 < text.Length && text[i + 1] == '_')

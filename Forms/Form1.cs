@@ -58,6 +58,7 @@ namespace c_lan
             StopQueryButton.Enabled = false;
             InitializeDatabaseObjectBrowser();
             InitializeDatabaseTypeUi();
+            InitializeAppearance();
         }
 
         private async void ExecuteQueryButton_Click(object? sender, EventArgs e)

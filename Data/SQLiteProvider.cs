@@ -132,9 +132,17 @@ namespace c_lan.Data
                 string? validationError = ValidateProfile(profile);
                 if (validationError is not null) { result.ErrorMessage = validationError; return result; }
                 int safeMaxRows = Math.Clamp(request.MaxRows, 1, 2000);
-                using var conn = new SqliteConnection(BuildConnectionString(profile));
+                using var conn = new SqliteConnection(BuildConnectionString(profile, request.IsReadOnly));
                 await conn.OpenAsync(token);
                 using var cmd = new SqliteCommand(request.SqlText, conn) { CommandTimeout = request.TimeoutSeconds };
+                if (request.SqlText.TrimStart().StartsWith("ALTER", StringComparison.OrdinalIgnoreCase))
+                {
+                    await cmd.ExecuteNonQueryAsync(token);
+                    result.IsSuccess = true;
+                    result.Rows = new DataTable();
+                    result.RowCount = 0;
+                    return result;
+                }
                 using var reader = await cmd.ExecuteReaderAsync(token);
                 (DataTable table, bool truncated) =
                     await BoundedDataTableReader.LoadAsync(reader, safeMaxRows, token);
@@ -147,12 +155,12 @@ namespace c_lan.Data
             return result;
         }
 
-        private static string BuildConnectionString(ConnectionProfile profile)
+        private static string BuildConnectionString(ConnectionProfile profile, bool isReadOnly = true)
         {
             SqliteConnectionStringBuilder builder = new SqliteConnectionStringBuilder
             {
                 DataSource = profile.DatabaseFilePath,
-                Mode = SqliteOpenMode.ReadOnly,
+                Mode = isReadOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWrite,
                 DefaultTimeout = (int)Math.Clamp(profile.ConnectionTimeout, 1u, 3600u)
             };
             return builder.ToString();

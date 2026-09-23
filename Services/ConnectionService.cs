@@ -17,6 +17,7 @@ namespace c_lan.Services
 
         public async Task<ConnectionResult> TestConnectionAsync(ConnectionProfile profile, CancellationToken cancellationToken)
         {
+            // 先检查通用字段，再让具体 Provider 处理数据库类型特有的连接参数。
             string? commonValidationError = ValidateCommonFields(profile);
             if (commonValidationError is not null)
             {
@@ -47,6 +48,7 @@ namespace c_lan.Services
         {
             token.ThrowIfCancellationRequested();
 
+            // 保存前同时经过通用校验和 Provider 校验，避免把无法使用的配置写入本地文件。
             string? commonValidationError = ValidateCommonFields(profile);
             if (commonValidationError is not null)
             {
@@ -109,6 +111,7 @@ namespace c_lan.Services
         {
             token.ThrowIfCancellationRequested();
 
+            // 删除按连接名称匹配，先拦截空名称，避免误删或无效读写配置文件。
             if (string.IsNullOrWhiteSpace(connectionName))
             {
                 return Failed("请先填写要删除的连接名称");
@@ -149,6 +152,7 @@ namespace c_lan.Services
 
         private static string? ValidateCommonFields(ConnectionProfile profile)
         {
+            // 这些字段与具体数据库无关，集中校验后可复用于测试、保存等操作。
             if (profile is null)
             {
                 return "连接信息为空";
@@ -196,6 +200,7 @@ namespace c_lan.Services
         //优化报错的统一方法
         private static SaveConfigurationResult Failed(string errorMessage)
         {
+            // 统一构造失败结果，让各个文件操作分支保持相同的返回格式。
             return new SaveConfigurationResult{IsSuccess = false,ErrorMessage = errorMessage};
         }
     }

@@ -115,9 +115,7 @@ public sealed class ElectricCheckSyncService : IDisposable
 
     private static string Required(object value) => Optional(value) ?? throw new InvalidDataException("电检记录存在必填字段为空");
     private static string? Optional(object value) => value is DBNull ? null : value?.ToString()?.Trim() is { Length: > 0 } text ? text : null;
-    public static string FormatTestDateTimeForApi(string value) =>
-        DateTime.Parse(value, CultureInfo.InvariantCulture)
-            .ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture);
+    public static string FormatTestDateTimeForApi(string value) => DateTime.Parse(value, CultureInfo.InvariantCulture).ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture);
     private static string QuoteIdentifier(string value) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("表名不能为空") : "\"" + value.Replace("\"", "\"\"") + "\"";
     private static string StateKey(ElectricCheckSyncSettings s) => $"{s.ServerBaseUrl.TrimEnd('/')}|{s.DeviceNo}|{Path.GetFullPath(s.SqliteFilePath)}|{s.TableName}";
     private static void Validate(ElectricCheckSyncSettings s)

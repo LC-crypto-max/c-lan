@@ -490,3 +490,9 @@ $RECYCLE.BIN/
 *.sqlite
 *.sqlite3
 /deploy/
+/.deploy-staging/
+/.tmp-*/
+
+# Local UI previews; keep Assets/app.ico as an application resource
+/Assets/preview-*.png
+/Assets/screenshots/
