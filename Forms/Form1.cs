@@ -1,4 +1,4 @@
-using c_lan.Models;
+﻿using c_lan.Models;
 using c_lan.Services;
 using System.Diagnostics;
 using System.Drawing;
@@ -13,12 +13,6 @@ namespace c_lan
         private readonly ElectricCheckSyncService _syncService;
         private CancellationTokenSource? _cancellationTokenSource;
         private ConnectionProfile? _activeConnectionProfile;
-        private readonly TreeView _databaseTreeView = new TreeView();
-        private readonly TabPage _databaseObjectsTabPage = new TabPage();
-        private readonly ComboBox _databaseTypeComboBox = new ComboBox();
-        private readonly Button _browseSqliteButton = new Button();
-        private readonly Panel _hostInputPanel = new Panel();
-        private readonly ComboBox _sqliteFileComboBox = new ComboBox();
         private CancellationTokenSource? _syncLoopCancellation;
         private Task? _syncLoopTask;
         private bool _allowClose;
@@ -58,15 +52,11 @@ namespace c_lan
             };
             FormClosing += Form1_FormClosing;
             _notifyIcon.DoubleClick += (_, _) => ShowFromTray();
-            ContextMenuStrip trayMenu = new();
-            trayMenu.Items.Add("显示窗口", null, (_, _) => ShowFromTray());
-            trayMenu.Items.Add("立即同步", null, async (_, _) => await SyncNowAsync());
-            trayMenu.Items.Add("退出", null, (_, _) => { _allowClose = true; Close(); });
-            _notifyIcon.ContextMenuStrip = trayMenu;
-            StopQueryButton.Enabled = false;
+            ShowWindowMenuItem.Click += (_, _) => ShowFromTray();
+            SyncNowMenuItem.Click += async (_, _) => await SyncNowAsync();
+            ExitMenuItem.Click += (_, _) => { _allowClose = true; Close(); };
             InitializeDatabaseObjectBrowser();
             InitializeDatabaseTypeUi();
-            InitializeAppearance();
         }
 
         private async void ExecuteQueryButton_Click(object? sender, EventArgs e)
@@ -356,20 +346,8 @@ namespace c_lan
 
         private void InitializeDatabaseObjectBrowser()
         {
-            //不重做现有布局，只在结果区增加一个对象树页签。
-            _databaseObjectsTabPage.Text = "数据库对象";
-            _databaseObjectsTabPage.Padding = new Padding(8);
-            _databaseObjectsTabPage.UseVisualStyleBackColor = true;
-
-            _databaseTreeView.Dock = DockStyle.Fill;
-            _databaseTreeView.BorderStyle = BorderStyle.None;
-            _databaseTreeView.HideSelection = false;
-            _databaseTreeView.ShowNodeToolTips = true;
             _databaseTreeView.BeforeExpand += DatabaseTreeView_BeforeExpand;
             _databaseTreeView.NodeMouseDoubleClick += DatabaseTreeView_NodeMouseDoubleClick;
-
-            _databaseObjectsTabPage.Controls.Add(_databaseTreeView);
-            ResultTabControl.TabPages.Insert(0, _databaseObjectsTabPage);
         }
 
         private void FillDatabaseTree(List<string> databases)
@@ -608,43 +586,20 @@ namespace c_lan
 
         private void InitializeDatabaseTypeUi()
         {
-            _databaseTypeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            _databaseTypeComboBox.Items.AddRange(new object[] { "MySQL", "SQLite" });
-            _databaseTypeComboBox.SelectedIndex = 0;
-            _databaseTypeComboBox.Location = new Point(120, 18);
-            _databaseTypeComboBox.Size = new Size(150, 28);
             _databaseTypeComboBox.SelectedIndexChanged += (_, _) => UpdateDatabaseTypeUi();
-            ConnectionPanel.Controls.Add(_databaseTypeComboBox);
-
-            ConnectionFieldsTable.Controls.Remove(HostText);
-            _hostInputPanel.Dock = DockStyle.Fill;
-            _hostInputPanel.Margin = new Padding(0, 0, 0, 8);
-            HostText.Dock = DockStyle.Fill;
             HostText.Leave += (_, _) => RefreshSqliteFiles(showMessage: false);
-            _browseSqliteButton.Text = "选择文件夹";
-            _browseSqliteButton.Dock = DockStyle.Right;
-            _browseSqliteButton.Width = 105;
-            _browseSqliteButton.Visible = false;
             _browseSqliteButton.Click += BrowseSqliteButton_Click;
-            _hostInputPanel.Controls.Add(HostText);
-            _hostInputPanel.Controls.Add(_browseSqliteButton);
-            ConnectionFieldsTable.Controls.Add(_hostInputPanel, 0, 3);
-
-            _sqliteFileComboBox.Dock = DockStyle.Fill;
-            _sqliteFileComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            _sqliteFileComboBox.Visible = false;
             _sqliteFileComboBox.Format += (_, e) =>
             {
                 if (e.ListItem is string path) e.Value = Path.GetFileName(path);
             };
-            ConnectionFieldsTable.Controls.Add(_sqliteFileComboBox, 0, 5);
+            _databaseTypeComboBox.SelectedIndex = 0;
             UpdateDatabaseTypeUi();
         }
 
         private void UpdateDatabaseTypeUi()
         {
             bool sqlite = _databaseTypeComboBox.SelectedIndex == 1;
-            ConnectionTipLabel.Visible = false;
             if (sqlite && !Directory.Exists(HostText.Text))
             {
                 HostText.Clear();
@@ -664,27 +619,19 @@ namespace c_lan
             SavePasswordCheckBox.Visible = !sqlite;
             ConnectButton.Text = sqlite ? "连接 SQLite" : "连接 MySQL";
             ConnectionTipLabel.Text = sqlite ? "选择文件夹后自动发现 SQLite 数据库" : "MySQL 服务器连接";
-            HeaderTitleLabel.Text = "多数据库工作台";
             if (String.IsNullOrWhiteSpace(SqlEditorTextBox.Text) || SqlEditorTextBox.Text.TrimStart().StartsWith("-- 在此输入", StringComparison.Ordinal))
             {
                 SqlEditorTextBox.Text = sqlite ? "-- 在此输入 SQLite 查询语句\n" : "-- 在此输入 MySQL 查询语句\n";
             }
-            Text = "多数据库浏览器";
             if (sqlite) RefreshSqliteFiles(showMessage: false);
         }
 
         private void BrowseSqliteButton_Click(object? sender, EventArgs e)
         {
-            using FolderBrowserDialog dialog = new FolderBrowserDialog
+            SqliteFolderDialog.InitialDirectory = Directory.Exists(HostText.Text) ? HostText.Text : AppContext.BaseDirectory;
+            if (SqliteFolderDialog.ShowDialog(this) == DialogResult.OK)
             {
-                Description = "选择包含 SQLite 数据库文件的文件夹",
-                UseDescriptionForTitle = true,
-                ShowNewFolderButton = false,
-                InitialDirectory = Directory.Exists(HostText.Text) ? HostText.Text : AppContext.BaseDirectory
-            };
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                HostText.Text = dialog.SelectedPath;
+                HostText.Text = SqliteFolderDialog.SelectedPath;
                 RefreshSqliteFiles(showMessage: true);
             }
         }
