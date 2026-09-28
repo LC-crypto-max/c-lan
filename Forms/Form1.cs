@@ -41,6 +41,14 @@ namespace c_lan
             ExecuteQueryButton.Click += ExecuteQueryButton_Click;
             StopQueryButton.Click += StopQueryButton_Click;
             ClearSqlButton.Click += ClearSqlButton_Click;
+            SqlEditorTextBox.ShortcutsEnabled = true;
+            ContextMenuStrip sqlMenu = new(components!);
+            sqlMenu.Items.Add("撤销 (Ctrl+Z)", null, (_, _) => SqlEditorTextBox.Undo());
+            sqlMenu.Items.Add("剪切 (Ctrl+X)", null, (_, _) => SqlEditorTextBox.Cut());
+            sqlMenu.Items.Add("复制 (Ctrl+C)", null, (_, _) => SqlEditorTextBox.Copy());
+            sqlMenu.Items.Add("粘贴 (Ctrl+V)", null, (_, _) => SqlEditorTextBox.Paste(DataFormats.GetFormat(DataFormats.UnicodeText)));
+            sqlMenu.Items.Add("全选 (Ctrl+A)", null, (_, _) => SqlEditorTextBox.SelectAll());
+            SqlEditorTextBox.ContextMenuStrip = sqlMenu;
             _fullSyncButton.Click += FullSyncButton_Click;
             _syncNowButton.Click += SyncNowButton_Click;
             _autoSyncCheckBox.CheckedChanged += (_, _) =>

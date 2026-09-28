@@ -4,6 +4,7 @@ using c_lan.Models;
 using c_lan.Services;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using c_lan.Data;
 
 int evaluatedRows = 0;
 
@@ -52,6 +53,33 @@ await stateStore.SaveAsync(stateKey, 123, CancellationToken.None);
 await stateStore.ResetAsync(stateKey, CancellationToken.None);
 Assert(await stateStore.LoadAsync(stateKey, CancellationToken.None) == 0, "sync state reset must clear the cursor");
 Console.WriteLine("Electric check state reset check passed.");
+
+string renameDatabase = Path.Combine(Path.GetTempPath(), $"c-lan-rename-{Guid.NewGuid():N}.db");
+try
+{
+    using (SqliteConnection setup = new($"Data Source={renameDatabase};Pooling=False"))
+    {
+        await setup.OpenAsync();
+        using SqliteCommand setupCommand = setup.CreateCommand();
+        setupCommand.CommandText = "CREATE TABLE electriccheck (cn_code varchar(128) DEFAULT NULL); INSERT INTO electriccheck VALUES ('SN-001'); CREATE INDEX code_index ON electriccheck(cn_code);";
+        await setupCommand.ExecuteNonQueryAsync();
+    }
+    QueryService queryService = new(new DatabaseProviderFactory(), new ReadOnlySqlValidator());
+    ConnectionProfile profile = new() { DatabaseType = DatabaseType.SQLite, DatabaseFilePath = renameDatabase };
+    const string renameSql = "-- 在此输入 SQLite 查询语句\nALTER TABLE electriccheck RENAME COLUMN cn_code TO sn_code;";
+    QueryResult denied = await queryService.ExecuteAsync(profile, new QueryRequest { SqlText = renameSql, IsReadOnly = true }, CancellationToken.None);
+    Assert(!denied.IsSuccess, "read-only mode must reject column renaming");
+    QueryResult renamed = await queryService.ExecuteAsync(profile, new QueryRequest { SqlText = renameSql, IsReadOnly = false }, CancellationToken.None);
+    Assert(renamed.IsSuccess, $"column rename failed: {renamed.ErrorMessage}");
+    QueryResult data = await queryService.ExecuteAsync(profile, new QueryRequest { SqlText = "SELECT sn_code FROM electriccheck INDEXED BY code_index", IsReadOnly = true }, CancellationToken.None);
+    Assert(data.IsSuccess && data.Rows?.Rows.Count == 1 && data.Rows.Rows[0][0].ToString() == "SN-001", "rename must preserve data and the index");
+    Console.WriteLine("SQLite column rename and read-only checks passed.");
+}
+finally
+{
+    SqliteConnection.ClearAllPools();
+    File.Delete(renameDatabase);
+}
 
 static void Assert(bool condition, string message)
 {
