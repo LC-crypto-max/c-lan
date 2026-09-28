@@ -27,17 +27,24 @@ namespace c_lan.Data
             {
                 using var conn = new SqliteConnection(BuildConnectionString(profile));
                 await conn.OpenAsync(token);
+                SetLimits(conn, token, (int)profile.ConnectionTimeout);
                 return new ConnectionResult { IsSuccess = true };
             }
             catch (OperationCanceledException) { return new ConnectionResult { IsSuccess = false, ErrorMessage = "SQLite连接已取消" }; }
             catch (SqliteException ex) { return new ConnectionResult { IsSuccess = false, ErrorMessage = "SQLite连接失败：" + ex.Message }; }
         }
 
-        public Task<List<string>> GetDatabasesAsync(ConnectionProfile profile, CancellationToken token)
+        public async Task<List<string>> GetDatabasesAsync(ConnectionProfile profile, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             //读取main数据库的内容
-            return Task.FromResult(new List<string> { "main" });
+            using var connection = new SqliteConnection(BuildConnectionString(profile));
+            await connection.OpenAsync(token);
+            SetLimits(connection, token, (int)profile.ConnectionTimeout);
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT count(*) FROM sqlite_schema";
+            await command.ExecuteScalarAsync(token);
+            return new List<string> { "main" };
         }
 
         public async Task<List<DatabaseObjectInfo>> GetObjectsAsync(ConnectionProfile profile, string databaseName, CancellationToken token)
@@ -51,6 +58,7 @@ namespace c_lan.Data
                 """;
             using var conn = new SqliteConnection(BuildConnectionString(profile));
             await conn.OpenAsync(token);
+                SetLimits(conn, token, (int)profile.ConnectionTimeout);
             using var cmd = new SqliteCommand(sql, conn);
             using var reader = await cmd.ExecuteReaderAsync(token);
             var objects = new List<DatabaseObjectInfo>();
@@ -67,7 +75,7 @@ namespace c_lan.Data
             return objects;
         }
 
-        public Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName, CancellationToken token)
+        public Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName, CancellationToken token, string? schemaName = null)
         {
             return GetColumnsCoreAsync(profile, databaseName, objectName, token);
         }
@@ -78,6 +86,7 @@ namespace c_lan.Data
             string sql = $"PRAGMA table_info({QuoteIdentifier(objectName)})";
             using var conn = new SqliteConnection(BuildConnectionString(profile));
             await conn.OpenAsync(token);
+                SetLimits(conn, token, (int)profile.ConnectionTimeout);
             using var cmd = new SqliteCommand(sql, conn);
             using var reader = await cmd.ExecuteReaderAsync(token);
             var columns = new List<ColumnInfo>();
@@ -98,7 +107,7 @@ namespace c_lan.Data
             return columns;
         }
 
-        public async Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName, int maxRows, CancellationToken token)
+        public async Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName, int maxRows, CancellationToken token, string? schemaName = null)
         {
             QueryResult result = new QueryResult();
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -109,6 +118,7 @@ namespace c_lan.Data
                 string sql = $"SELECT * FROM {QuoteIdentifier(objectName)} LIMIT $fetchRows";
                 using var conn = new SqliteConnection(BuildConnectionString(profile));
                 await conn.OpenAsync(token);
+                SetLimits(conn, token, (int)profile.ConnectionTimeout);
                 using var cmd = new SqliteCommand(sql, conn) { CommandTimeout = (int)Math.Clamp(profile.ConnectionTimeout, 1u, 3600u) };
                 cmd.Parameters.AddWithValue("$fetchRows", safeMaxRows + 1);
                 using var reader = await cmd.ExecuteReaderAsync(token);
@@ -117,6 +127,8 @@ namespace c_lan.Data
                 result.IsSuccess = true; result.Rows = table; result.RowCount = table.Rows.Count; result.IsTruncated = truncated;
             }
             catch (OperationCanceledException) { result.ErrorMessage = "SQLite预览已取消"; }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == 9)
+            { result.ErrorMessage = token.IsCancellationRequested ? "SQLite预览已取消" : "SQLite预览超时"; }
             catch (SqliteException ex) { result.ErrorMessage = "SQLite预览失败：" + ex.Message; }
             catch (Exception ex) { result.ErrorMessage = "SQLite预览失败：" + ex.Message; }
             finally { stopwatch.Stop(); result.ExecutionTime = (int)stopwatch.ElapsedMilliseconds; }
@@ -134,6 +146,9 @@ namespace c_lan.Data
                 int safeMaxRows = Math.Clamp(request.MaxRows, 1, 2000);
                 using var conn = new SqliteConnection(BuildConnectionString(profile));
                 await conn.OpenAsync(token);
+                SetLimits(conn, token, (int)profile.ConnectionTimeout);
+                SQLitePCL.raw.sqlite3_progress_handler(conn.Handle, 1000,
+                    _ => token.IsCancellationRequested || stopwatch.Elapsed.TotalSeconds >= request.TimeoutSeconds ? 1 : 0, null);
                 using var cmd = new SqliteCommand(request.SqlText, conn) { CommandTimeout = request.TimeoutSeconds };
                 using var reader = await cmd.ExecuteReaderAsync(token);
                 (DataTable table, bool truncated) =
@@ -141,10 +156,19 @@ namespace c_lan.Data
                 result.IsSuccess = true; result.Rows = table; result.RowCount = table.Rows.Count; result.IsTruncated = truncated;
             }
             catch (OperationCanceledException) { result.ErrorMessage = "SQLite查询已取消"; }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == 9)
+            { result.ErrorMessage = token.IsCancellationRequested ? "SQLite查询已取消" : "SQLite查询超时"; }
             catch (SqliteException ex) { result.ErrorMessage = "SQLite查询失败：" + ex.Message; }
             catch (Exception ex) { result.ErrorMessage = "SQLite查询失败：" + ex.Message; }
             finally { stopwatch.Stop(); result.ExecutionTime = (int)stopwatch.ElapsedMilliseconds; }
             return result;
+        }
+
+        private static void SetLimits(SqliteConnection connection, CancellationToken token, int seconds)
+        {
+            var timer = Stopwatch.StartNew();
+            SQLitePCL.raw.sqlite3_progress_handler(connection.Handle, 1000,
+                _ => token.IsCancellationRequested || timer.Elapsed.TotalSeconds >= Math.Clamp(seconds, 1, 3600) ? 1 : 0, null);
         }
 
         private static string BuildConnectionString(ConnectionProfile profile)
@@ -153,6 +177,7 @@ namespace c_lan.Data
             {
                 DataSource = profile.DatabaseFilePath,
                 Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
                 DefaultTimeout = (int)Math.Clamp(profile.ConnectionTimeout, 1u, 3600u)
             };
             return builder.ToString();

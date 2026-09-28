@@ -14,6 +14,8 @@ namespace c_lan.Models
         Oracle = 2,
 
         /// SQLite 数据库。
-        SQLite = 3
+        SQLite = 3,
+
+        SqlServer = 4
     }
 }

@@ -1,4 +1,4 @@
-namespace c_lan
+﻿namespace c_lan
 {
     partial class Form1
     {
@@ -17,17 +17,34 @@ namespace c_lan
 
         private void InitializeComponent()
         {
-            HeaderPanel = new Panel();
-            HeaderSubtitleLabel = new Label();
-            HeaderTitleLabel = new Label();
-            MainSplitContainer = new SplitContainer();
-            ConnectionPanel = new Panel();
+            components = new System.ComponentModel.Container();
+            SqlEditorContextMenu = new ContextMenuStrip(components);
+            CopySqlMenuItem = new ToolStripMenuItem();
+            PasteSqlMenuItem = new ToolStripMenuItem();
+            SelectAllSqlMenuItem = new ToolStripMenuItem();
+            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
+            SqliteFolderDialog = new FolderBrowserDialog();
+            _databaseTreeView = new TreeView();
+            _databaseObjectsTabPage = new TabPage();
+            _databaseTypeComboBox = new ComboBox();
+            _browseSqliteButton = new Button();
+            _hostInputPanel = new Panel();
+            HostText = new TextBox();
+            _sqliteFileComboBox = new ComboBox();
+            ConnectionLayout = new TableLayoutPanel();
+            ConnectionHeading = new TableLayoutPanel();
+            ConnectionSectionLabel = new Label();
+            SavedConnectionsPanel = new TableLayoutPanel();
+            SavedConnectionsComboBox = new ComboBox();
+            NewConnectionButton = new Button();
             ConnectionFieldsTable = new TableLayoutPanel();
             ConnectionnameLabel = new Label();
             ConnectionnameText = new TextBox();
             HostLabel = new Label();
-            HostText = new TextBox();
             PortLabel = new Label();
+            PortInputPanel = new Panel();
             PortText = new TextBox();
             UserLabel = new Label();
             UserText = new TextBox();
@@ -51,21 +68,31 @@ namespace c_lan
             SecondaryButtonTable = new TableLayoutPanel();
             SaveConnectionButton = new Button();
             DeleteConnectionButton = new Button();
+            AuthenticationPanel = new FlowLayoutPanel();
+            IntegratedSecurityCheckBox = new CheckBox();
+            TrustCertificateCheckBox = new CheckBox();
+            QueryParametersPanel = new FlowLayoutPanel();
+            DatabaseLabel = new Label();
+            DatabaseComboBox = new ComboBox();
+            QueryTimeoutLabel = new Label();
+            QueryTimeoutNumericUpDown = new NumericUpDown();
+            ReadOnlyCheckBox = new CheckBox();
+            QueryActionsPanel = new FlowLayoutPanel();
+            ExecuteQueryButton = new Button();
+            StopQueryButton = new Button();
+            ClearSqlButton = new Button();
+            RefreshButton = new Button();
+            ExportButton = new Button();
+            HeaderPanel = new Panel();
+            HeaderTitleLabel = new Label();
+            MainSplitContainer = new SplitContainer();
+            ConnectionPanel = new Panel();
             ConnectionTipLabel = new Label();
-            ConnectionSectionLabel = new Label();
             WorkspaceSplitContainer = new SplitContainer();
             QueryPanel = new Panel();
             QueryEditorPanel = new Panel();
             SqlEditorTextBox = new RichTextBox();
             QueryToolbarPanel = new Panel();
-            ClearSqlButton = new Button();
-            StopQueryButton = new Button();
-            ExecuteQueryButton = new Button();
-            ReadOnlyCheckBox = new CheckBox();
-            QueryTimeoutNumericUpDown = new NumericUpDown();
-            QueryTimeoutLabel = new Label();
-            DatabaseComboBox = new ComboBox();
-            DatabaseLabel = new Label();
             QuerySectionLabel = new Label();
             ResultTabControl = new TabControl();
             ResultTabPage = new TabPage();
@@ -79,18 +106,29 @@ namespace c_lan
             ConnectionStatusLabel = new ToolStripStatusLabel();
             StatusSpringLabel = new ToolStripStatusLabel();
             CurrentDatabaseStatusLabel = new ToolStripStatusLabel();
+            SqlEditorContextMenu.SuspendLayout();
+            _databaseObjectsTabPage.SuspendLayout();
+            _hostInputPanel.SuspendLayout();
+            ConnectionLayout.SuspendLayout();
+            ConnectionHeading.SuspendLayout();
+            SavedConnectionsPanel.SuspendLayout();
+            ConnectionFieldsTable.SuspendLayout();
+            PortInputPanel.SuspendLayout();
+            PasswordPanel.SuspendLayout();
+            ConnectionOptionsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)TimeoutNumericUpDown).BeginInit();
+            ConnectionButtonTable.SuspendLayout();
+            SecondaryButtonTable.SuspendLayout();
+            AuthenticationPanel.SuspendLayout();
+            QueryParametersPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)QueryTimeoutNumericUpDown).BeginInit();
+            QueryActionsPanel.SuspendLayout();
             HeaderPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)MainSplitContainer).BeginInit();
             MainSplitContainer.Panel1.SuspendLayout();
             MainSplitContainer.Panel2.SuspendLayout();
             MainSplitContainer.SuspendLayout();
             ConnectionPanel.SuspendLayout();
-            ConnectionFieldsTable.SuspendLayout();
-            PasswordPanel.SuspendLayout();
-            ConnectionOptionsPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)TimeoutNumericUpDown).BeginInit();
-            ConnectionButtonTable.SuspendLayout();
-            SecondaryButtonTable.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)WorkspaceSplitContainer).BeginInit();
             WorkspaceSplitContainer.Panel1.SuspendLayout();
             WorkspaceSplitContainer.Panel2.SuspendLayout();
@@ -98,7 +136,6 @@ namespace c_lan
             QueryPanel.SuspendLayout();
             QueryEditorPanel.SuspendLayout();
             QueryToolbarPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)QueryTimeoutNumericUpDown).BeginInit();
             ResultTabControl.SuspendLayout();
             ResultTabPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
@@ -107,90 +144,217 @@ namespace c_lan
             MainStatusStrip.SuspendLayout();
             SuspendLayout();
             // 
-            // HeaderPanel
+            // SqlEditorContextMenu
+            //
+            SqlEditorContextMenu.Items.AddRange(new ToolStripItem[] { CopySqlMenuItem, PasteSqlMenuItem, SelectAllSqlMenuItem });
+            SqlEditorContextMenu.Name = "SqlEditorContextMenu";
+            CopySqlMenuItem.Name = "CopySqlMenuItem";
+            CopySqlMenuItem.Text = "复制";
+            PasteSqlMenuItem.Name = "PasteSqlMenuItem";
+            PasteSqlMenuItem.Text = "粘贴";
+            SelectAllSqlMenuItem.Name = "SelectAllSqlMenuItem";
+            SelectAllSqlMenuItem.Text = "全选";
+            //
+            // SqliteFolderDialog
             // 
-            HeaderPanel.BackColor = Color.FromArgb(27, 43, 65);
-            HeaderPanel.Controls.Add(HeaderSubtitleLabel);
-            HeaderPanel.Controls.Add(HeaderTitleLabel);
-            HeaderPanel.Dock = DockStyle.Top;
-            HeaderPanel.Location = new Point(0, 0);
-            HeaderPanel.Name = "HeaderPanel";
-            HeaderPanel.Padding = new Padding(24, 11, 24, 8);
-            HeaderPanel.Size = new Size(1384, 72);
-            HeaderPanel.TabIndex = 0;
+            SqliteFolderDialog.Description = "选择包含 SQLite 数据库文件的文件夹";
+            SqliteFolderDialog.ShowNewFolderButton = false;
+            SqliteFolderDialog.UseDescriptionForTitle = true;
             // 
-            // HeaderSubtitleLabel
+            // _databaseTreeView
             // 
-            HeaderSubtitleLabel.AutoSize = true;
-            HeaderSubtitleLabel.ForeColor = Color.FromArgb(174, 190, 209);
-            HeaderSubtitleLabel.Location = new Point(211, 36);
-            HeaderSubtitleLabel.Name = "HeaderSubtitleLabel";
-            HeaderSubtitleLabel.Size = new Size(216, 20);
-            HeaderSubtitleLabel.TabIndex = 1;
-            HeaderSubtitleLabel.Text = "连接配置 · SQL 查询 · 结果预览";
+            _databaseTreeView.BackColor = Color.White;
+            _databaseTreeView.BorderStyle = BorderStyle.None;
+            _databaseTreeView.Dock = DockStyle.Fill;
+            _databaseTreeView.ForeColor = Color.FromArgb(30, 41, 59);
+            _databaseTreeView.FullRowSelect = true;
+            _databaseTreeView.HideSelection = false;
+            _databaseTreeView.ItemHeight = 30;
+            _databaseTreeView.Location = new Point(8, 8);
+            _databaseTreeView.Name = "_databaseTreeView";
+            _databaseTreeView.ShowNodeToolTips = true;
+            _databaseTreeView.Size = new Size(964, 301);
+            _databaseTreeView.TabIndex = 0;
             // 
-            // HeaderTitleLabel
+            // _databaseObjectsTabPage
             // 
-            HeaderTitleLabel.AutoSize = true;
-            HeaderTitleLabel.Font = new Font("Microsoft YaHei UI", 16F, FontStyle.Bold);
-            HeaderTitleLabel.ForeColor = Color.White;
-            HeaderTitleLabel.Location = new Point(20, 18);
-            HeaderTitleLabel.Name = "HeaderTitleLabel";
-            HeaderTitleLabel.Size = new Size(204, 36);
-            HeaderTitleLabel.TabIndex = 0;
-            HeaderTitleLabel.Text = "多数据库工作台";
+            _databaseObjectsTabPage.Controls.Add(_databaseTreeView);
+            _databaseObjectsTabPage.Location = new Point(4, 33);
+            _databaseObjectsTabPage.Name = "_databaseObjectsTabPage";
+            _databaseObjectsTabPage.Padding = new Padding(8);
+            _databaseObjectsTabPage.Size = new Size(980, 317);
+            _databaseObjectsTabPage.TabIndex = 0;
+            _databaseObjectsTabPage.Text = "数据库对象";
+            _databaseObjectsTabPage.UseVisualStyleBackColor = true;
             // 
-            // MainSplitContainer
+            // _databaseTypeComboBox
             // 
-            MainSplitContainer.Dock = DockStyle.Fill;
-            MainSplitContainer.FixedPanel = FixedPanel.Panel1;
-            MainSplitContainer.Location = new Point(0, 72);
-            MainSplitContainer.Name = "MainSplitContainer";
+            _databaseTypeComboBox.Dock = DockStyle.Fill;
+            _databaseTypeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            _databaseTypeComboBox.Items.AddRange(new object[] { "MySQL", "SQLite", "SQL Server", "Oracle" });
+            _databaseTypeComboBox.Location = new Point(108, 7);
+            _databaseTypeComboBox.Margin = new Padding(0, 7, 0, 0);
+            _databaseTypeComboBox.Name = "_databaseTypeComboBox";
+            _databaseTypeComboBox.Size = new Size(221, 28);
+            _databaseTypeComboBox.TabIndex = 7;
             // 
-            // MainSplitContainer.Panel1
+            // _browseSqliteButton
             // 
-            MainSplitContainer.Panel1.BackColor = Color.FromArgb(245, 247, 250);
-            MainSplitContainer.Panel1.Controls.Add(ConnectionPanel);
-            MainSplitContainer.Panel1MinSize = 360;
+            _browseSqliteButton.BackColor = Color.White;
+            _browseSqliteButton.Dock = DockStyle.Right;
+            _browseSqliteButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            _browseSqliteButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(217, 229, 244);
+            _browseSqliteButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(231, 239, 249);
+            _browseSqliteButton.FlatStyle = FlatStyle.Flat;
+            _browseSqliteButton.ForeColor = Color.FromArgb(30, 41, 59);
+            _browseSqliteButton.Location = new Point(224, 0);
+            _browseSqliteButton.Name = "_browseSqliteButton";
+            _browseSqliteButton.Size = new Size(105, 31);
+            _browseSqliteButton.TabIndex = 2;
+            _browseSqliteButton.Text = "选择文件夹";
+            _browseSqliteButton.UseVisualStyleBackColor = false;
+            _browseSqliteButton.Visible = false;
             // 
-            // MainSplitContainer.Panel2
+            // _hostInputPanel
             // 
-            MainSplitContainer.Panel2.BackColor = Color.White;
-            MainSplitContainer.Panel2.Controls.Add(WorkspaceSplitContainer);
-            MainSplitContainer.Panel2MinSize = 620;
-            MainSplitContainer.Size = new Size(1384, 730);
-            MainSplitContainer.SplitterDistance = 390;
-            MainSplitContainer.SplitterWidth = 5;
-            MainSplitContainer.TabIndex = 1;
+            _hostInputPanel.Controls.Add(HostText);
+            _hostInputPanel.Controls.Add(_browseSqliteButton);
+            _hostInputPanel.Dock = DockStyle.Fill;
+            _hostInputPanel.Location = new Point(0, 96);
+            _hostInputPanel.Margin = new Padding(0, 0, 0, 5);
+            _hostInputPanel.Name = "_hostInputPanel";
+            _hostInputPanel.Size = new Size(329, 31);
+            _hostInputPanel.TabIndex = 2;
             // 
-            // ConnectionPanel
+            // HostText
             // 
-            ConnectionPanel.AutoScroll = true;
-            ConnectionPanel.BackColor = Color.FromArgb(245, 247, 250);
-            ConnectionPanel.Controls.Add(ConnectionFieldsTable);
-            ConnectionPanel.Controls.Add(ConnectionOptionsPanel);
-            ConnectionPanel.Controls.Add(ConnectionButtonTable);
-            ConnectionPanel.Controls.Add(SecondaryButtonTable);
-            ConnectionPanel.Controls.Add(ConnectionTipLabel);
-            ConnectionPanel.Controls.Add(ConnectionSectionLabel);
-            ConnectionPanel.Dock = DockStyle.Fill;
-            ConnectionPanel.Location = new Point(0, 0);
-            ConnectionPanel.Name = "ConnectionPanel";
-            ConnectionPanel.Padding = new Padding(22, 20, 22, 18);
-            ConnectionPanel.Size = new Size(390, 730);
-            ConnectionPanel.TabIndex = 0;
+            HostText.Dock = DockStyle.Fill;
+            HostText.Location = new Point(0, 0);
+            HostText.Margin = new Padding(0, 0, 0, 5);
+            HostText.Name = "HostText";
+            HostText.PlaceholderText = "localhost 或服务器 IP";
+            HostText.Size = new Size(224, 27);
+            HostText.TabIndex = 1;
+            // 
+            // _sqliteFileComboBox
+            // 
+            _sqliteFileComboBox.Dock = DockStyle.Fill;
+            _sqliteFileComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            _sqliteFileComboBox.FormattingEnabled = true;
+            _sqliteFileComboBox.Location = new Point(0, 0);
+            _sqliteFileComboBox.Name = "_sqliteFileComboBox";
+            _sqliteFileComboBox.Size = new Size(329, 28);
+            _sqliteFileComboBox.TabIndex = 3;
+            _sqliteFileComboBox.Visible = false;
+            // 
+            // ConnectionLayout
+            // 
+            ConnectionLayout.AutoSize = true;
+            ConnectionLayout.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            ConnectionLayout.ColumnCount = 1;
+            ConnectionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            ConnectionLayout.Controls.Add(ConnectionHeading, 0, 0);
+            ConnectionLayout.Controls.Add(SavedConnectionsPanel, 0, 1);
+            ConnectionLayout.Controls.Add(ConnectionFieldsTable, 0, 2);
+            ConnectionLayout.Controls.Add(ConnectionOptionsPanel, 0, 4);
+            ConnectionLayout.Controls.Add(ConnectionButtonTable, 0, 5);
+            ConnectionLayout.Controls.Add(SecondaryButtonTable, 0, 6);
+            ConnectionLayout.Controls.Add(AuthenticationPanel, 0, 3);
+            ConnectionLayout.Dock = DockStyle.Top;
+            ConnectionLayout.Location = new Point(20, 16);
+            ConnectionLayout.Margin = new Padding(0);
+            ConnectionLayout.Name = "ConnectionLayout";
+            ConnectionLayout.RowCount = 7;
+            ConnectionLayout.RowStyles.Add(new RowStyle());
+            ConnectionLayout.RowStyles.Add(new RowStyle());
+            ConnectionLayout.RowStyles.Add(new RowStyle());
+            ConnectionLayout.RowStyles.Add(new RowStyle());
+            ConnectionLayout.RowStyles.Add(new RowStyle());
+            ConnectionLayout.RowStyles.Add(new RowStyle());
+            ConnectionLayout.RowStyles.Add(new RowStyle());
+            ConnectionLayout.Size = new Size(329, 833);
+            ConnectionLayout.TabIndex = 0;
+            // 
+            // ConnectionHeading
+            // 
+            ConnectionHeading.ColumnCount = 2;
+            ConnectionHeading.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108F));
+            ConnectionHeading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            ConnectionHeading.Controls.Add(ConnectionSectionLabel, 0, 0);
+            ConnectionHeading.Controls.Add(_databaseTypeComboBox, 1, 0);
+            ConnectionHeading.Dock = DockStyle.Top;
+            ConnectionHeading.Location = new Point(0, 0);
+            ConnectionHeading.Margin = new Padding(0, 0, 0, 8);
+            ConnectionHeading.Name = "ConnectionHeading";
+            ConnectionHeading.RowCount = 1;
+            ConnectionHeading.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            ConnectionHeading.Size = new Size(329, 44);
+            ConnectionHeading.TabIndex = 0;
+            // 
+            // ConnectionSectionLabel
+            // 
+            ConnectionSectionLabel.AutoSize = true;
+            ConnectionSectionLabel.Dock = DockStyle.Fill;
+            ConnectionSectionLabel.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
+            ConnectionSectionLabel.ForeColor = Color.FromArgb(35, 46, 61);
+            ConnectionSectionLabel.Location = new Point(0, 0);
+            ConnectionSectionLabel.Margin = new Padding(0);
+            ConnectionSectionLabel.Name = "ConnectionSectionLabel";
+            ConnectionSectionLabel.Size = new Size(108, 44);
+            ConnectionSectionLabel.TabIndex = 6;
+            ConnectionSectionLabel.Text = "连接设置";
+            ConnectionSectionLabel.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // SavedConnectionsPanel
+            // 
+            SavedConnectionsPanel.ColumnCount = 2;
+            SavedConnectionsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            SavedConnectionsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
+            SavedConnectionsPanel.Controls.Add(SavedConnectionsComboBox, 0, 0);
+            SavedConnectionsPanel.Controls.Add(NewConnectionButton, 1, 0);
+            SavedConnectionsPanel.Dock = DockStyle.Top;
+            SavedConnectionsPanel.Location = new Point(3, 55);
+            SavedConnectionsPanel.Name = "SavedConnectionsPanel";
+            SavedConnectionsPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            SavedConnectionsPanel.Size = new Size(323, 38);
+            SavedConnectionsPanel.TabIndex = 1;
+            // 
+            // SavedConnectionsComboBox
+            // 
+            SavedConnectionsComboBox.AccessibleName = "已保存连接";
+            SavedConnectionsComboBox.Dock = DockStyle.Fill;
+            SavedConnectionsComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            SavedConnectionsComboBox.Location = new Point(3, 3);
+            SavedConnectionsComboBox.Name = "SavedConnectionsComboBox";
+            SavedConnectionsComboBox.Size = new Size(247, 28);
+            SavedConnectionsComboBox.TabIndex = 0;
+            // 
+            // NewConnectionButton
+            // 
+            NewConnectionButton.BackColor = Color.White;
+            NewConnectionButton.Dock = DockStyle.Fill;
+            NewConnectionButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            NewConnectionButton.FlatStyle = FlatStyle.Flat;
+            NewConnectionButton.ForeColor = Color.FromArgb(30, 41, 59);
+            NewConnectionButton.Location = new Point(256, 3);
+            NewConnectionButton.Name = "NewConnectionButton";
+            NewConnectionButton.Size = new Size(64, 32);
+            NewConnectionButton.TabIndex = 1;
+            NewConnectionButton.Text = "新建";
+            NewConnectionButton.UseVisualStyleBackColor = false;
             // 
             // ConnectionFieldsTable
             // 
-            ConnectionFieldsTable.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            ConnectionFieldsTable.AutoSize = true;
+            ConnectionFieldsTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             ConnectionFieldsTable.ColumnCount = 1;
             ConnectionFieldsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             ConnectionFieldsTable.Controls.Add(ConnectionnameLabel, 0, 0);
             ConnectionFieldsTable.Controls.Add(ConnectionnameText, 0, 1);
             ConnectionFieldsTable.Controls.Add(HostLabel, 0, 2);
-            ConnectionFieldsTable.Controls.Add(HostText, 0, 3);
+            ConnectionFieldsTable.Controls.Add(_hostInputPanel, 0, 3);
             ConnectionFieldsTable.Controls.Add(PortLabel, 0, 4);
-            ConnectionFieldsTable.Controls.Add(PortText, 0, 5);
+            ConnectionFieldsTable.Controls.Add(PortInputPanel, 0, 5);
             ConnectionFieldsTable.Controls.Add(UserLabel, 0, 6);
             ConnectionFieldsTable.Controls.Add(UserText, 0, 7);
             ConnectionFieldsTable.Controls.Add(PasswordLabel, 0, 8);
@@ -201,33 +365,36 @@ namespace c_lan
             ConnectionFieldsTable.Controls.Add(CharacterSetComboBox, 0, 13);
             ConnectionFieldsTable.Controls.Add(SslModeLabel, 0, 14);
             ConnectionFieldsTable.Controls.Add(SslModeComboBox, 0, 15);
-            ConnectionFieldsTable.Location = new Point(22, 58);
+            ConnectionFieldsTable.Dock = DockStyle.Top;
+            ConnectionFieldsTable.Location = new Point(0, 96);
+            ConnectionFieldsTable.Margin = new Padding(0, 0, 0, 8);
             ConnectionFieldsTable.Name = "ConnectionFieldsTable";
             ConnectionFieldsTable.RowCount = 16;
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 25F));
-            ConnectionFieldsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            ConnectionFieldsTable.Size = new Size(346, 520);
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.RowStyles.Add(new RowStyle());
+            ConnectionFieldsTable.Size = new Size(329, 527);
             ConnectionFieldsTable.TabIndex = 1;
             // 
             // ConnectionnameLabel
             // 
             ConnectionnameLabel.AutoSize = true;
             ConnectionnameLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            ConnectionnameLabel.Location = new Point(3, 0);
+            ConnectionnameLabel.Location = new Point(0, 7);
+            ConnectionnameLabel.Margin = new Padding(0, 7, 0, 5);
             ConnectionnameLabel.Name = "ConnectionnameLabel";
             ConnectionnameLabel.Size = new Size(69, 20);
             ConnectionnameLabel.TabIndex = 0;
@@ -236,55 +403,62 @@ namespace c_lan
             // ConnectionnameText
             // 
             ConnectionnameText.Dock = DockStyle.Fill;
-            ConnectionnameText.Location = new Point(3, 28);
+            ConnectionnameText.Location = new Point(0, 32);
+            ConnectionnameText.Margin = new Padding(0, 0, 0, 5);
             ConnectionnameText.Name = "ConnectionnameText";
             ConnectionnameText.PlaceholderText = "例如：本地开发库";
-            ConnectionnameText.Size = new Size(340, 27);
+            ConnectionnameText.Size = new Size(329, 27);
             ConnectionnameText.TabIndex = 0;
             // 
             // HostLabel
             // 
             HostLabel.AutoSize = true;
             HostLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            HostLabel.Location = new Point(3, 65);
+            HostLabel.Location = new Point(0, 71);
+            HostLabel.Margin = new Padding(0, 7, 0, 5);
             HostLabel.Name = "HostLabel";
             HostLabel.Size = new Size(69, 20);
             HostLabel.TabIndex = 1;
             HostLabel.Text = "主机地址";
             // 
-            // HostText
-            // 
-            HostText.Dock = DockStyle.Fill;
-            HostText.Location = new Point(3, 93);
-            HostText.Name = "HostText";
-            HostText.PlaceholderText = "localhost 或服务器 IP";
-            HostText.Size = new Size(340, 27);
-            HostText.TabIndex = 1;
-            // 
             // PortLabel
             // 
             PortLabel.AutoSize = true;
             PortLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            PortLabel.Location = new Point(3, 130);
+            PortLabel.Location = new Point(0, 139);
+            PortLabel.Margin = new Padding(0, 7, 0, 5);
             PortLabel.Name = "PortLabel";
             PortLabel.Size = new Size(39, 20);
             PortLabel.TabIndex = 2;
             PortLabel.Text = "端口";
             // 
+            // PortInputPanel
+            // 
+            PortInputPanel.Controls.Add(PortText);
+            PortInputPanel.Controls.Add(_sqliteFileComboBox);
+            PortInputPanel.Dock = DockStyle.Fill;
+            PortInputPanel.Location = new Point(0, 164);
+            PortInputPanel.Margin = new Padding(0, 0, 0, 5);
+            PortInputPanel.Name = "PortInputPanel";
+            PortInputPanel.Size = new Size(329, 31);
+            PortInputPanel.TabIndex = 3;
+            // 
             // PortText
             // 
             PortText.Dock = DockStyle.Fill;
-            PortText.Location = new Point(3, 158);
+            PortText.Location = new Point(0, 0);
+            PortText.Margin = new Padding(0, 0, 0, 5);
             PortText.Name = "PortText";
             PortText.PlaceholderText = "3306";
-            PortText.Size = new Size(340, 27);
+            PortText.Size = new Size(329, 27);
             PortText.TabIndex = 2;
             // 
             // UserLabel
             // 
             UserLabel.AutoSize = true;
             UserLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            UserLabel.Location = new Point(3, 195);
+            UserLabel.Location = new Point(0, 207);
+            UserLabel.Margin = new Padding(0, 7, 0, 5);
             UserLabel.Name = "UserLabel";
             UserLabel.Size = new Size(54, 20);
             UserLabel.TabIndex = 3;
@@ -293,17 +467,19 @@ namespace c_lan
             // UserText
             // 
             UserText.Dock = DockStyle.Fill;
-            UserText.Location = new Point(3, 223);
+            UserText.Location = new Point(0, 232);
+            UserText.Margin = new Padding(0, 0, 0, 5);
             UserText.Name = "UserText";
             UserText.PlaceholderText = "MySQL 用户名";
-            UserText.Size = new Size(340, 27);
+            UserText.Size = new Size(329, 27);
             UserText.TabIndex = 3;
             // 
             // PasswordLabel
             // 
             PasswordLabel.AutoSize = true;
             PasswordLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            PasswordLabel.Location = new Point(3, 260);
+            PasswordLabel.Location = new Point(0, 271);
+            PasswordLabel.Margin = new Padding(0, 7, 0, 5);
             PasswordLabel.Name = "PasswordLabel";
             PasswordLabel.Size = new Size(39, 20);
             PasswordLabel.TabIndex = 4;
@@ -314,30 +490,30 @@ namespace c_lan
             PasswordPanel.Controls.Add(PasswordText);
             PasswordPanel.Controls.Add(ShowPasswordCheckBox);
             PasswordPanel.Dock = DockStyle.Fill;
-            PasswordPanel.Location = new Point(0, 285);
-            PasswordPanel.Margin = new Padding(0, 0, 0, 8);
+            PasswordPanel.Location = new Point(0, 296);
+            PasswordPanel.Margin = new Padding(0, 0, 0, 5);
             PasswordPanel.Name = "PasswordPanel";
-            PasswordPanel.Size = new Size(346, 32);
+            PasswordPanel.Size = new Size(329, 32);
             PasswordPanel.TabIndex = 5;
             // 
             // PasswordText
             // 
-            PasswordText.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            PasswordText.Dock = DockStyle.Fill;
             PasswordText.Location = new Point(0, 0);
             PasswordText.Name = "PasswordText";
             PasswordText.PlaceholderText = "MySQL 密码";
-            PasswordText.Size = new Size(411, 27);
+            PasswordText.Size = new Size(268, 27);
             PasswordText.TabIndex = 4;
             PasswordText.UseSystemPasswordChar = true;
             // 
             // ShowPasswordCheckBox
             // 
-            ShowPasswordCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             ShowPasswordCheckBox.AutoSize = true;
+            ShowPasswordCheckBox.Dock = DockStyle.Right;
             ShowPasswordCheckBox.ForeColor = Color.FromArgb(90, 100, 115);
-            ShowPasswordCheckBox.Location = new Point(421, 3);
+            ShowPasswordCheckBox.Location = new Point(268, 0);
             ShowPasswordCheckBox.Name = "ShowPasswordCheckBox";
-            ShowPasswordCheckBox.Size = new Size(61, 24);
+            ShowPasswordCheckBox.Size = new Size(61, 32);
             ShowPasswordCheckBox.TabIndex = 5;
             ShowPasswordCheckBox.Text = "显示";
             // 
@@ -345,7 +521,8 @@ namespace c_lan
             // 
             DefaultDatabaseLabel.AutoSize = true;
             DefaultDatabaseLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            DefaultDatabaseLabel.Location = new Point(3, 325);
+            DefaultDatabaseLabel.Location = new Point(0, 340);
+            DefaultDatabaseLabel.Margin = new Padding(0, 7, 0, 5);
             DefaultDatabaseLabel.Name = "DefaultDatabaseLabel";
             DefaultDatabaseLabel.Size = new Size(144, 20);
             DefaultDatabaseLabel.TabIndex = 6;
@@ -354,17 +531,19 @@ namespace c_lan
             // DefaultDatabaseText
             // 
             DefaultDatabaseText.Dock = DockStyle.Fill;
-            DefaultDatabaseText.Location = new Point(3, 353);
+            DefaultDatabaseText.Location = new Point(0, 365);
+            DefaultDatabaseText.Margin = new Padding(0, 0, 0, 5);
             DefaultDatabaseText.Name = "DefaultDatabaseText";
             DefaultDatabaseText.PlaceholderText = "连接后默认使用的数据库";
-            DefaultDatabaseText.Size = new Size(340, 27);
+            DefaultDatabaseText.Size = new Size(329, 27);
             DefaultDatabaseText.TabIndex = 6;
             // 
             // CharacterSetLabel
             // 
             CharacterSetLabel.AutoSize = true;
             CharacterSetLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            CharacterSetLabel.Location = new Point(3, 390);
+            CharacterSetLabel.Location = new Point(0, 404);
+            CharacterSetLabel.Margin = new Padding(0, 7, 0, 5);
             CharacterSetLabel.Name = "CharacterSetLabel";
             CharacterSetLabel.Size = new Size(54, 20);
             CharacterSetLabel.TabIndex = 7;
@@ -375,16 +554,18 @@ namespace c_lan
             CharacterSetComboBox.Dock = DockStyle.Fill;
             CharacterSetComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             CharacterSetComboBox.Items.AddRange(new object[] { "utf8mb4", "utf8", "latin1" });
-            CharacterSetComboBox.Location = new Point(3, 418);
+            CharacterSetComboBox.Location = new Point(0, 429);
+            CharacterSetComboBox.Margin = new Padding(0, 0, 0, 5);
             CharacterSetComboBox.Name = "CharacterSetComboBox";
-            CharacterSetComboBox.Size = new Size(340, 28);
+            CharacterSetComboBox.Size = new Size(329, 28);
             CharacterSetComboBox.TabIndex = 7;
             // 
             // SslModeLabel
             // 
             SslModeLabel.AutoSize = true;
             SslModeLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            SslModeLabel.Location = new Point(3, 455);
+            SslModeLabel.Location = new Point(0, 469);
+            SslModeLabel.Margin = new Padding(0, 7, 0, 5);
             SslModeLabel.Name = "SslModeLabel";
             SslModeLabel.Size = new Size(69, 20);
             SslModeLabel.TabIndex = 8;
@@ -395,20 +576,22 @@ namespace c_lan
             SslModeComboBox.Dock = DockStyle.Fill;
             SslModeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             SslModeComboBox.Items.AddRange(new object[] { "Preferred", "Required", "VerifyCA", "VerifyFull", "Disabled" });
-            SslModeComboBox.Location = new Point(3, 483);
+            SslModeComboBox.Location = new Point(0, 494);
+            SslModeComboBox.Margin = new Padding(0, 0, 0, 5);
             SslModeComboBox.Name = "SslModeComboBox";
-            SslModeComboBox.Size = new Size(340, 28);
+            SslModeComboBox.Size = new Size(329, 28);
             SslModeComboBox.TabIndex = 8;
             // 
             // ConnectionOptionsPanel
             // 
-            ConnectionOptionsPanel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             ConnectionOptionsPanel.Controls.Add(SavePasswordCheckBox);
             ConnectionOptionsPanel.Controls.Add(TimeoutNumericUpDown);
             ConnectionOptionsPanel.Controls.Add(TimeoutLabel);
-            ConnectionOptionsPanel.Location = new Point(22, 584);
+            ConnectionOptionsPanel.Dock = DockStyle.Top;
+            ConnectionOptionsPanel.Location = new Point(0, 697);
+            ConnectionOptionsPanel.Margin = new Padding(0, 0, 0, 8);
             ConnectionOptionsPanel.Name = "ConnectionOptionsPanel";
-            ConnectionOptionsPanel.Size = new Size(346, 34);
+            ConnectionOptionsPanel.Size = new Size(329, 36);
             ConnectionOptionsPanel.TabIndex = 2;
             // 
             // SavePasswordCheckBox
@@ -416,11 +599,11 @@ namespace c_lan
             SavePasswordCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             SavePasswordCheckBox.AutoSize = true;
             SavePasswordCheckBox.ForeColor = Color.FromArgb(61, 73, 89);
-            SavePasswordCheckBox.Location = new Point(252, 4);
+            SavePasswordCheckBox.Location = new Point(235, 4);
             SavePasswordCheckBox.Name = "SavePasswordCheckBox";
             SavePasswordCheckBox.Size = new Size(91, 24);
             SavePasswordCheckBox.TabIndex = 10;
-            SavePasswordCheckBox.Text = "保存密码";
+            SavePasswordCheckBox.Text = "加密保存密码";
             // 
             // TimeoutNumericUpDown
             // 
@@ -444,87 +627,354 @@ namespace c_lan
             // 
             // ConnectionButtonTable
             // 
-            ConnectionButtonTable.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             ConnectionButtonTable.ColumnCount = 2;
             ConnectionButtonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
             ConnectionButtonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
             ConnectionButtonTable.Controls.Add(TestButton, 0, 0);
             ConnectionButtonTable.Controls.Add(ConnectButton, 1, 0);
-            ConnectionButtonTable.Location = new Point(22, 626);
+            ConnectionButtonTable.Dock = DockStyle.Top;
+            ConnectionButtonTable.Location = new Point(0, 741);
+            ConnectionButtonTable.Margin = new Padding(0, 0, 0, 8);
             ConnectionButtonTable.Name = "ConnectionButtonTable";
             ConnectionButtonTable.RowCount = 1;
             ConnectionButtonTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            ConnectionButtonTable.Size = new Size(346, 42);
+            ConnectionButtonTable.Size = new Size(329, 42);
             ConnectionButtonTable.TabIndex = 3;
             // 
             // TestButton
             // 
             TestButton.BackColor = Color.White;
             TestButton.Dock = DockStyle.Fill;
+            TestButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            TestButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(217, 229, 244);
+            TestButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(231, 239, 249);
             TestButton.FlatStyle = FlatStyle.Flat;
-            TestButton.ForeColor = Color.FromArgb(35, 92, 151);
+            TestButton.ForeColor = Color.FromArgb(30, 41, 59);
             TestButton.Location = new Point(0, 0);
             TestButton.Margin = new Padding(0, 0, 6, 0);
             TestButton.Name = "TestButton";
-            TestButton.Size = new Size(149, 42);
+            TestButton.Size = new Size(142, 42);
             TestButton.TabIndex = 11;
             TestButton.Text = "测试连接";
             TestButton.UseVisualStyleBackColor = false;
-            TestButton.Click += TestButton_Click;
             // 
             // ConnectButton
             // 
-            ConnectButton.BackColor = Color.FromArgb(35, 92, 151);
+            ConnectButton.BackColor = Color.FromArgb(37, 99, 183);
             ConnectButton.Dock = DockStyle.Fill;
+            ConnectButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
             ConnectButton.FlatAppearance.BorderSize = 0;
+            ConnectButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(23, 63, 119);
+            ConnectButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 79, 149);
             ConnectButton.FlatStyle = FlatStyle.Flat;
             ConnectButton.ForeColor = Color.White;
-            ConnectButton.Location = new Point(161, 0);
+            ConnectButton.Location = new Point(154, 0);
             ConnectButton.Margin = new Padding(6, 0, 0, 0);
             ConnectButton.Name = "ConnectButton";
-            ConnectButton.Size = new Size(185, 42);
+            ConnectButton.Size = new Size(175, 42);
             ConnectButton.TabIndex = 12;
             ConnectButton.Text = "连接 MySQL";
             ConnectButton.UseVisualStyleBackColor = false;
             // 
             // SecondaryButtonTable
             // 
-            SecondaryButtonTable.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             SecondaryButtonTable.ColumnCount = 2;
             SecondaryButtonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             SecondaryButtonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             SecondaryButtonTable.Controls.Add(SaveConnectionButton, 0, 0);
             SecondaryButtonTable.Controls.Add(DeleteConnectionButton, 1, 0);
-            SecondaryButtonTable.Location = new Point(22, 676);
+            SecondaryButtonTable.Dock = DockStyle.Top;
+            SecondaryButtonTable.Location = new Point(0, 791);
+            SecondaryButtonTable.Margin = new Padding(0, 0, 0, 8);
             SecondaryButtonTable.Name = "SecondaryButtonTable";
             SecondaryButtonTable.RowCount = 1;
             SecondaryButtonTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            SecondaryButtonTable.Size = new Size(346, 34);
+            SecondaryButtonTable.Size = new Size(329, 34);
             SecondaryButtonTable.TabIndex = 4;
             // 
             // SaveConnectionButton
             // 
+            SaveConnectionButton.BackColor = Color.White;
             SaveConnectionButton.Dock = DockStyle.Fill;
+            SaveConnectionButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            SaveConnectionButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(217, 229, 244);
+            SaveConnectionButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(231, 239, 249);
             SaveConnectionButton.FlatStyle = FlatStyle.Flat;
-            SaveConnectionButton.ForeColor = Color.FromArgb(76, 87, 102);
+            SaveConnectionButton.ForeColor = Color.FromArgb(30, 41, 59);
             SaveConnectionButton.Location = new Point(0, 0);
             SaveConnectionButton.Margin = new Padding(0, 0, 6, 0);
             SaveConnectionButton.Name = "SaveConnectionButton";
-            SaveConnectionButton.Size = new Size(167, 34);
+            SaveConnectionButton.Size = new Size(158, 34);
             SaveConnectionButton.TabIndex = 13;
             SaveConnectionButton.Text = "保存配置";
+            SaveConnectionButton.UseVisualStyleBackColor = false;
             // 
             // DeleteConnectionButton
             // 
+            DeleteConnectionButton.BackColor = Color.White;
             DeleteConnectionButton.Dock = DockStyle.Fill;
+            DeleteConnectionButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            DeleteConnectionButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(217, 229, 244);
+            DeleteConnectionButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(231, 239, 249);
             DeleteConnectionButton.FlatStyle = FlatStyle.Flat;
-            DeleteConnectionButton.ForeColor = Color.FromArgb(173, 58, 58);
-            DeleteConnectionButton.Location = new Point(179, 0);
+            DeleteConnectionButton.ForeColor = Color.FromArgb(171, 47, 47);
+            DeleteConnectionButton.Location = new Point(170, 0);
             DeleteConnectionButton.Margin = new Padding(6, 0, 0, 0);
             DeleteConnectionButton.Name = "DeleteConnectionButton";
-            DeleteConnectionButton.Size = new Size(167, 34);
+            DeleteConnectionButton.Size = new Size(159, 34);
             DeleteConnectionButton.TabIndex = 14;
             DeleteConnectionButton.Text = "删除配置";
+            DeleteConnectionButton.UseVisualStyleBackColor = false;
+            // 
+            // AuthenticationPanel
+            // 
+            AuthenticationPanel.AutoSize = true;
+            AuthenticationPanel.Controls.Add(IntegratedSecurityCheckBox);
+            AuthenticationPanel.Controls.Add(TrustCertificateCheckBox);
+            AuthenticationPanel.Dock = DockStyle.Top;
+            AuthenticationPanel.Location = new Point(3, 634);
+            AuthenticationPanel.Name = "AuthenticationPanel";
+            AuthenticationPanel.Size = new Size(323, 60);
+            AuthenticationPanel.TabIndex = 5;
+            // 
+            // IntegratedSecurityCheckBox
+            // 
+            IntegratedSecurityCheckBox.AutoSize = true;
+            IntegratedSecurityCheckBox.Location = new Point(3, 3);
+            IntegratedSecurityCheckBox.Name = "IntegratedSecurityCheckBox";
+            IntegratedSecurityCheckBox.Size = new Size(162, 24);
+            IntegratedSecurityCheckBox.TabIndex = 0;
+            IntegratedSecurityCheckBox.Text = "Windows 身份验证";
+            // 
+            // TrustCertificateCheckBox
+            // 
+            TrustCertificateCheckBox.AutoSize = true;
+            TrustCertificateCheckBox.Location = new Point(3, 33);
+            TrustCertificateCheckBox.Name = "TrustCertificateCheckBox";
+            TrustCertificateCheckBox.Size = new Size(226, 24);
+            TrustCertificateCheckBox.TabIndex = 1;
+            TrustCertificateCheckBox.Text = "信任服务器证书（本地测试）";
+            // 
+            // QueryParametersPanel
+            // 
+            QueryParametersPanel.Controls.Add(DatabaseLabel);
+            QueryParametersPanel.Controls.Add(DatabaseComboBox);
+            QueryParametersPanel.Controls.Add(QueryTimeoutLabel);
+            QueryParametersPanel.Controls.Add(QueryTimeoutNumericUpDown);
+            QueryParametersPanel.Controls.Add(ReadOnlyCheckBox);
+            QueryParametersPanel.Dock = DockStyle.Top;
+            QueryParametersPanel.Location = new Point(0, 0);
+            QueryParametersPanel.Margin = new Padding(0);
+            QueryParametersPanel.Name = "QueryParametersPanel";
+            QueryParametersPanel.Size = new Size(948, 42);
+            QueryParametersPanel.TabIndex = 1;
+            QueryParametersPanel.WrapContents = false;
+            // 
+            // DatabaseLabel
+            // 
+            DatabaseLabel.AutoSize = true;
+            DatabaseLabel.ForeColor = Color.FromArgb(61, 73, 89);
+            DatabaseLabel.Location = new Point(0, 8);
+            DatabaseLabel.Margin = new Padding(0, 8, 10, 0);
+            DatabaseLabel.Name = "DatabaseLabel";
+            DatabaseLabel.Size = new Size(54, 20);
+            DatabaseLabel.TabIndex = 22;
+            DatabaseLabel.Text = "数据库";
+            // 
+            // DatabaseComboBox
+            // 
+            DatabaseComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            DatabaseComboBox.FormattingEnabled = true;
+            DatabaseComboBox.Location = new Point(64, 4);
+            DatabaseComboBox.Margin = new Padding(0, 4, 10, 0);
+            DatabaseComboBox.Name = "DatabaseComboBox";
+            DatabaseComboBox.Size = new Size(185, 28);
+            DatabaseComboBox.TabIndex = 15;
+            // 
+            // QueryTimeoutLabel
+            // 
+            QueryTimeoutLabel.AutoSize = true;
+            QueryTimeoutLabel.ForeColor = Color.FromArgb(61, 73, 89);
+            QueryTimeoutLabel.Location = new Point(259, 8);
+            QueryTimeoutLabel.Margin = new Padding(0, 8, 10, 0);
+            QueryTimeoutLabel.Name = "QueryTimeoutLabel";
+            QueryTimeoutLabel.Size = new Size(39, 20);
+            QueryTimeoutLabel.TabIndex = 21;
+            QueryTimeoutLabel.Text = "超时";
+            // 
+            // QueryTimeoutNumericUpDown
+            // 
+            QueryTimeoutNumericUpDown.Location = new Point(308, 4);
+            QueryTimeoutNumericUpDown.Margin = new Padding(0, 4, 10, 0);
+            QueryTimeoutNumericUpDown.Maximum = new decimal(new int[] { 3600, 0, 0, 0 });
+            QueryTimeoutNumericUpDown.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            QueryTimeoutNumericUpDown.Name = "QueryTimeoutNumericUpDown";
+            QueryTimeoutNumericUpDown.Size = new Size(65, 27);
+            QueryTimeoutNumericUpDown.TabIndex = 16;
+            QueryTimeoutNumericUpDown.Value = new decimal(new int[] { 30, 0, 0, 0 });
+            // 
+            // ReadOnlyCheckBox
+            // 
+            ReadOnlyCheckBox.AutoSize = true;
+            ReadOnlyCheckBox.Enabled = false;
+            ReadOnlyCheckBox.Checked = true;
+            ReadOnlyCheckBox.CheckState = CheckState.Checked;
+            ReadOnlyCheckBox.ForeColor = Color.FromArgb(61, 73, 89);
+            ReadOnlyCheckBox.Location = new Point(383, 4);
+            ReadOnlyCheckBox.Margin = new Padding(0, 4, 10, 0);
+            ReadOnlyCheckBox.Name = "ReadOnlyCheckBox";
+            ReadOnlyCheckBox.Size = new Size(91, 24);
+            ReadOnlyCheckBox.TabIndex = 17;
+            ReadOnlyCheckBox.Text = "只读模式";
+            // 
+            // QueryActionsPanel
+            // 
+            QueryActionsPanel.Controls.Add(ExecuteQueryButton);
+            QueryActionsPanel.Controls.Add(StopQueryButton);
+            QueryActionsPanel.Controls.Add(ClearSqlButton);
+            QueryActionsPanel.Controls.Add(RefreshButton);
+            QueryActionsPanel.Controls.Add(ExportButton);
+            QueryActionsPanel.Dock = DockStyle.Bottom;
+            QueryActionsPanel.Location = new Point(0, 46);
+            QueryActionsPanel.Margin = new Padding(0);
+            QueryActionsPanel.Name = "QueryActionsPanel";
+            QueryActionsPanel.Size = new Size(948, 48);
+            QueryActionsPanel.TabIndex = 0;
+            QueryActionsPanel.WrapContents = false;
+            // 
+            // ExecuteQueryButton
+            // 
+            ExecuteQueryButton.BackColor = Color.FromArgb(37, 99, 183);
+            ExecuteQueryButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            ExecuteQueryButton.FlatAppearance.BorderSize = 0;
+            ExecuteQueryButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(23, 63, 119);
+            ExecuteQueryButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 79, 149);
+            ExecuteQueryButton.FlatStyle = FlatStyle.Flat;
+            ExecuteQueryButton.ForeColor = Color.White;
+            ExecuteQueryButton.Location = new Point(0, 4);
+            ExecuteQueryButton.Margin = new Padding(0, 4, 8, 6);
+            ExecuteQueryButton.Name = "ExecuteQueryButton";
+            ExecuteQueryButton.Size = new Size(118, 34);
+            ExecuteQueryButton.TabIndex = 18;
+            ExecuteQueryButton.Text = "▶ 执行查询";
+            ExecuteQueryButton.UseVisualStyleBackColor = false;
+            // 
+            // StopQueryButton
+            // 
+            StopQueryButton.BackColor = Color.White;
+            StopQueryButton.Enabled = false;
+            StopQueryButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            StopQueryButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(217, 229, 244);
+            StopQueryButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(231, 239, 249);
+            StopQueryButton.FlatStyle = FlatStyle.Flat;
+            StopQueryButton.ForeColor = Color.FromArgb(171, 47, 47);
+            StopQueryButton.Location = new Point(126, 4);
+            StopQueryButton.Margin = new Padding(0, 4, 8, 6);
+            StopQueryButton.Name = "StopQueryButton";
+            StopQueryButton.Size = new Size(88, 34);
+            StopQueryButton.TabIndex = 19;
+            StopQueryButton.Text = "停止";
+            StopQueryButton.UseVisualStyleBackColor = false;
+            // 
+            // ClearSqlButton
+            // 
+            ClearSqlButton.BackColor = Color.White;
+            ClearSqlButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            ClearSqlButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(217, 229, 244);
+            ClearSqlButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(231, 239, 249);
+            ClearSqlButton.FlatStyle = FlatStyle.Flat;
+            ClearSqlButton.ForeColor = Color.FromArgb(30, 41, 59);
+            ClearSqlButton.Location = new Point(222, 4);
+            ClearSqlButton.Margin = new Padding(0, 4, 8, 6);
+            ClearSqlButton.Name = "ClearSqlButton";
+            ClearSqlButton.Size = new Size(92, 34);
+            ClearSqlButton.TabIndex = 20;
+            ClearSqlButton.Text = "清空";
+            ClearSqlButton.UseVisualStyleBackColor = false;
+            // 
+            // RefreshButton
+            // 
+            RefreshButton.BackColor = Color.White;
+            RefreshButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            RefreshButton.FlatStyle = FlatStyle.Flat;
+            RefreshButton.ForeColor = Color.FromArgb(30, 41, 59);
+            RefreshButton.Location = new Point(325, 3);
+            RefreshButton.Name = "RefreshButton";
+            RefreshButton.Size = new Size(100, 36);
+            RefreshButton.TabIndex = 21;
+            RefreshButton.Text = "刷新对象";
+            RefreshButton.UseVisualStyleBackColor = false;
+            // 
+            // ExportButton
+            // 
+            ExportButton.BackColor = Color.White;
+            ExportButton.FlatAppearance.BorderColor = Color.FromArgb(211, 221, 233);
+            ExportButton.FlatStyle = FlatStyle.Flat;
+            ExportButton.ForeColor = Color.FromArgb(30, 41, 59);
+            ExportButton.Location = new Point(431, 3);
+            ExportButton.Name = "ExportButton";
+            ExportButton.Size = new Size(100, 36);
+            ExportButton.TabIndex = 22;
+            ExportButton.Text = "导出 CSV";
+            ExportButton.UseVisualStyleBackColor = false;
+            // 
+            // HeaderPanel
+            // 
+            HeaderPanel.BackColor = Color.FromArgb(24, 42, 66);
+            HeaderPanel.Controls.Add(HeaderTitleLabel);
+            HeaderPanel.Dock = DockStyle.Top;
+            HeaderPanel.Location = new Point(0, 0);
+            HeaderPanel.Name = "HeaderPanel";
+            HeaderPanel.Size = new Size(1384, 64);
+            HeaderPanel.TabIndex = 0;
+            // 
+            // HeaderTitleLabel
+            // 
+            HeaderTitleLabel.AutoSize = true;
+            HeaderTitleLabel.Font = new Font("Microsoft YaHei UI", 15F, FontStyle.Bold);
+            HeaderTitleLabel.ForeColor = Color.White;
+            HeaderTitleLabel.Location = new Point(24, 13);
+            HeaderTitleLabel.Name = "HeaderTitleLabel";
+            HeaderTitleLabel.Size = new Size(190, 33);
+            HeaderTitleLabel.TabIndex = 0;
+            HeaderTitleLabel.Text = "多数据库查询工作台";
+            // 
+            // MainSplitContainer
+            // 
+            MainSplitContainer.BackColor = Color.FromArgb(211, 221, 233);
+            MainSplitContainer.Dock = DockStyle.Fill;
+            MainSplitContainer.FixedPanel = FixedPanel.Panel1;
+            MainSplitContainer.Location = new Point(0, 64);
+            MainSplitContainer.Name = "MainSplitContainer";
+            // 
+            // MainSplitContainer.Panel1
+            // 
+            MainSplitContainer.Panel1.BackColor = Color.FromArgb(244, 247, 251);
+            MainSplitContainer.Panel1.Controls.Add(ConnectionPanel);
+            MainSplitContainer.Panel1MinSize = 360;
+            // 
+            // MainSplitContainer.Panel2
+            // 
+            MainSplitContainer.Panel2.BackColor = Color.White;
+            MainSplitContainer.Panel2.Controls.Add(WorkspaceSplitContainer);
+            MainSplitContainer.Panel2MinSize = 620;
+            MainSplitContainer.Size = new Size(1384, 738);
+            MainSplitContainer.SplitterDistance = 390;
+            MainSplitContainer.SplitterWidth = 6;
+            MainSplitContainer.TabIndex = 1;
+            // 
+            // ConnectionPanel
+            // 
+            ConnectionPanel.AutoScroll = true;
+            ConnectionPanel.BackColor = Color.FromArgb(244, 247, 251);
+            ConnectionPanel.Controls.Add(ConnectionLayout);
+            ConnectionPanel.Controls.Add(ConnectionTipLabel);
+            ConnectionPanel.Dock = DockStyle.Fill;
+            ConnectionPanel.Location = new Point(0, 0);
+            ConnectionPanel.Name = "ConnectionPanel";
+            ConnectionPanel.Padding = new Padding(20, 16, 20, 20);
+            ConnectionPanel.Size = new Size(390, 738);
+            ConnectionPanel.TabIndex = 0;
             // 
             // ConnectionTipLabel
             // 
@@ -534,21 +984,12 @@ namespace c_lan
             ConnectionTipLabel.Name = "ConnectionTipLabel";
             ConnectionTipLabel.Size = new Size(157, 20);
             ConnectionTipLabel.TabIndex = 5;
-            ConnectionTipLabel.Text = "支持 MySQL / SQLite";
-            // 
-            // ConnectionSectionLabel
-            // 
-            ConnectionSectionLabel.AutoSize = true;
-            ConnectionSectionLabel.Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold);
-            ConnectionSectionLabel.ForeColor = Color.FromArgb(35, 46, 61);
-            ConnectionSectionLabel.Location = new Point(20, 20);
-            ConnectionSectionLabel.Name = "ConnectionSectionLabel";
-            ConnectionSectionLabel.Size = new Size(92, 27);
-            ConnectionSectionLabel.TabIndex = 6;
-            ConnectionSectionLabel.Text = "连接设置";
+            ConnectionTipLabel.Text = "只读查询 · 双击表预览前 200 行 · F5 执行";
+            ConnectionTipLabel.Visible = false;
             // 
             // WorkspaceSplitContainer
             // 
+            WorkspaceSplitContainer.BackColor = Color.FromArgb(211, 221, 233);
             WorkspaceSplitContainer.Dock = DockStyle.Fill;
             WorkspaceSplitContainer.Location = new Point(0, 0);
             WorkspaceSplitContainer.Name = "WorkspaceSplitContainer";
@@ -556,17 +997,19 @@ namespace c_lan
             // 
             // WorkspaceSplitContainer.Panel1
             // 
+            WorkspaceSplitContainer.Panel1.BackColor = Color.White;
             WorkspaceSplitContainer.Panel1.Controls.Add(QueryPanel);
             WorkspaceSplitContainer.Panel1MinSize = 250;
             // 
             // WorkspaceSplitContainer.Panel2
             // 
+            WorkspaceSplitContainer.Panel2.BackColor = Color.White;
             WorkspaceSplitContainer.Panel2.Controls.Add(ResultTabControl);
             WorkspaceSplitContainer.Panel2.Controls.Add(ResultSummaryPanel);
             WorkspaceSplitContainer.Panel2MinSize = 240;
-            WorkspaceSplitContainer.Size = new Size(989, 730);
-            WorkspaceSplitContainer.SplitterDistance = 335;
-            WorkspaceSplitContainer.SplitterWidth = 5;
+            WorkspaceSplitContainer.Size = new Size(988, 738);
+            WorkspaceSplitContainer.SplitterDistance = 338;
+            WorkspaceSplitContainer.SplitterWidth = 6;
             WorkspaceSplitContainer.TabIndex = 0;
             // 
             // QueryPanel
@@ -578,136 +1021,46 @@ namespace c_lan
             QueryPanel.Location = new Point(0, 0);
             QueryPanel.Name = "QueryPanel";
             QueryPanel.Padding = new Padding(20, 16, 20, 14);
-            QueryPanel.Size = new Size(989, 335);
+            QueryPanel.Size = new Size(988, 338);
             QueryPanel.TabIndex = 0;
             // 
             // QueryEditorPanel
             // 
+            QueryEditorPanel.BackColor = Color.FromArgb(248, 250, 253);
             QueryEditorPanel.BorderStyle = BorderStyle.FixedSingle;
             QueryEditorPanel.Controls.Add(SqlEditorTextBox);
             QueryEditorPanel.Dock = DockStyle.Fill;
-            QueryEditorPanel.Location = new Point(20, 94);
+            QueryEditorPanel.Location = new Point(20, 143);
             QueryEditorPanel.Name = "QueryEditorPanel";
             QueryEditorPanel.Padding = new Padding(10);
-            QueryEditorPanel.Size = new Size(949, 227);
+            QueryEditorPanel.Size = new Size(948, 181);
             QueryEditorPanel.TabIndex = 0;
             // 
             // SqlEditorTextBox
             // 
             SqlEditorTextBox.AcceptsTab = true;
-            SqlEditorTextBox.BackColor = Color.FromArgb(250, 251, 253);
+            SqlEditorTextBox.BackColor = Color.FromArgb(248, 250, 253);
             SqlEditorTextBox.BorderStyle = BorderStyle.None;
             SqlEditorTextBox.Dock = DockStyle.Fill;
             SqlEditorTextBox.Font = new Font("Consolas", 11F);
-            SqlEditorTextBox.ForeColor = Color.FromArgb(34, 42, 53);
+            SqlEditorTextBox.ForeColor = Color.FromArgb(30, 41, 59);
             SqlEditorTextBox.Location = new Point(10, 10);
             SqlEditorTextBox.Name = "SqlEditorTextBox";
-            SqlEditorTextBox.Size = new Size(927, 205);
+            SqlEditorTextBox.Size = new Size(926, 159);
             SqlEditorTextBox.TabIndex = 20;
+            SqlEditorTextBox.ContextMenuStrip = SqlEditorContextMenu;
+            SqlEditorTextBox.ShortcutsEnabled = true;
             SqlEditorTextBox.Text = "-- 在此输入 SQL 查询语句\n";
             // 
             // QueryToolbarPanel
             // 
-            QueryToolbarPanel.Controls.Add(ClearSqlButton);
-            QueryToolbarPanel.Controls.Add(StopQueryButton);
-            QueryToolbarPanel.Controls.Add(ExecuteQueryButton);
-            QueryToolbarPanel.Controls.Add(ReadOnlyCheckBox);
-            QueryToolbarPanel.Controls.Add(QueryTimeoutNumericUpDown);
-            QueryToolbarPanel.Controls.Add(QueryTimeoutLabel);
-            QueryToolbarPanel.Controls.Add(DatabaseComboBox);
-            QueryToolbarPanel.Controls.Add(DatabaseLabel);
+            QueryToolbarPanel.Controls.Add(QueryActionsPanel);
+            QueryToolbarPanel.Controls.Add(QueryParametersPanel);
             QueryToolbarPanel.Dock = DockStyle.Top;
             QueryToolbarPanel.Location = new Point(20, 49);
             QueryToolbarPanel.Name = "QueryToolbarPanel";
-            QueryToolbarPanel.Size = new Size(949, 45);
+            QueryToolbarPanel.Size = new Size(948, 94);
             QueryToolbarPanel.TabIndex = 1;
-            // 
-            // ClearSqlButton
-            // 
-            ClearSqlButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            ClearSqlButton.FlatStyle = FlatStyle.Flat;
-            ClearSqlButton.ForeColor = Color.FromArgb(76, 87, 102);
-            ClearSqlButton.Location = new Point(847, 3);
-            ClearSqlButton.Name = "ClearSqlButton";
-            ClearSqlButton.Size = new Size(92, 34);
-            ClearSqlButton.TabIndex = 20;
-            ClearSqlButton.Text = "清空";
-            // 
-            // StopQueryButton
-            // 
-            StopQueryButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            StopQueryButton.FlatStyle = FlatStyle.Flat;
-            StopQueryButton.ForeColor = Color.FromArgb(173, 58, 58);
-            StopQueryButton.Location = new Point(751, 3);
-            StopQueryButton.Name = "StopQueryButton";
-            StopQueryButton.Size = new Size(88, 34);
-            StopQueryButton.TabIndex = 19;
-            StopQueryButton.Text = "停止";
-            // 
-            // ExecuteQueryButton
-            // 
-            ExecuteQueryButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            ExecuteQueryButton.BackColor = Color.FromArgb(31, 137, 89);
-            ExecuteQueryButton.FlatAppearance.BorderSize = 0;
-            ExecuteQueryButton.FlatStyle = FlatStyle.Flat;
-            ExecuteQueryButton.ForeColor = Color.White;
-            ExecuteQueryButton.Location = new Point(625, 3);
-            ExecuteQueryButton.Name = "ExecuteQueryButton";
-            ExecuteQueryButton.Size = new Size(118, 34);
-            ExecuteQueryButton.TabIndex = 18;
-            ExecuteQueryButton.Text = "▶ 执行查询";
-            ExecuteQueryButton.UseVisualStyleBackColor = false;
-            // 
-            // ReadOnlyCheckBox
-            // 
-            ReadOnlyCheckBox.AutoSize = true;
-            ReadOnlyCheckBox.Checked = true;
-            ReadOnlyCheckBox.CheckState = CheckState.Checked;
-            ReadOnlyCheckBox.ForeColor = Color.FromArgb(61, 73, 89);
-            ReadOnlyCheckBox.Location = new Point(386, 8);
-            ReadOnlyCheckBox.Name = "ReadOnlyCheckBox";
-            ReadOnlyCheckBox.Size = new Size(91, 24);
-            ReadOnlyCheckBox.TabIndex = 17;
-            ReadOnlyCheckBox.Text = "只读模式";
-            // 
-            // QueryTimeoutNumericUpDown
-            // 
-            QueryTimeoutNumericUpDown.Location = new Point(306, 6);
-            QueryTimeoutNumericUpDown.Maximum = new decimal(new int[] { 3600, 0, 0, 0 });
-            QueryTimeoutNumericUpDown.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            QueryTimeoutNumericUpDown.Name = "QueryTimeoutNumericUpDown";
-            QueryTimeoutNumericUpDown.Size = new Size(65, 27);
-            QueryTimeoutNumericUpDown.TabIndex = 16;
-            QueryTimeoutNumericUpDown.Value = new decimal(new int[] { 30, 0, 0, 0 });
-            // 
-            // QueryTimeoutLabel
-            // 
-            QueryTimeoutLabel.AutoSize = true;
-            QueryTimeoutLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            QueryTimeoutLabel.Location = new Point(260, 10);
-            QueryTimeoutLabel.Name = "QueryTimeoutLabel";
-            QueryTimeoutLabel.Size = new Size(39, 20);
-            QueryTimeoutLabel.TabIndex = 21;
-            QueryTimeoutLabel.Text = "超时";
-            // 
-            // DatabaseComboBox
-            // 
-            DatabaseComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            DatabaseComboBox.FormattingEnabled = true;
-            DatabaseComboBox.Location = new Point(58, 6);
-            DatabaseComboBox.Name = "DatabaseComboBox";
-            DatabaseComboBox.Size = new Size(185, 28);
-            DatabaseComboBox.TabIndex = 15;
-            // 
-            // DatabaseLabel
-            // 
-            DatabaseLabel.AutoSize = true;
-            DatabaseLabel.ForeColor = Color.FromArgb(61, 73, 89);
-            DatabaseLabel.Location = new Point(0, 10);
-            DatabaseLabel.Name = "DatabaseLabel";
-            DatabaseLabel.Size = new Size(54, 20);
-            DatabaseLabel.TabIndex = 22;
-            DatabaseLabel.Text = "数据库";
             // 
             // QuerySectionLabel
             // 
@@ -724,6 +1077,7 @@ namespace c_lan
             // 
             // ResultTabControl
             // 
+            ResultTabControl.Controls.Add(_databaseObjectsTabPage);
             ResultTabControl.Controls.Add(ResultTabPage);
             ResultTabControl.Controls.Add(MessageTabPage);
             ResultTabControl.Dock = DockStyle.Fill;
@@ -731,7 +1085,7 @@ namespace c_lan
             ResultTabControl.Name = "ResultTabControl";
             ResultTabControl.Padding = new Point(16, 5);
             ResultTabControl.SelectedIndex = 0;
-            ResultTabControl.Size = new Size(989, 350);
+            ResultTabControl.Size = new Size(988, 354);
             ResultTabControl.TabIndex = 21;
             // 
             // ResultTabPage
@@ -740,7 +1094,7 @@ namespace c_lan
             ResultTabPage.Location = new Point(4, 33);
             ResultTabPage.Name = "ResultTabPage";
             ResultTabPage.Padding = new Padding(8);
-            ResultTabPage.Size = new Size(981, 313);
+            ResultTabPage.Size = new Size(980, 317);
             ResultTabPage.TabIndex = 0;
             ResultTabPage.Text = "查询结果";
             ResultTabPage.UseVisualStyleBackColor = true;
@@ -749,20 +1103,39 @@ namespace c_lan
             // 
             dataGridView1.AllowUserToAddRows = false;
             dataGridView1.AllowUserToDeleteRows = false;
+            dataGridViewCellStyle1.BackColor = Color.FromArgb(247, 249, 252);
+            dataGridView1.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
             dataGridView1.BackgroundColor = Color.White;
             dataGridView1.BorderStyle = BorderStyle.None;
+            dataGridView1.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = Color.FromArgb(233, 239, 247);
+            dataGridViewCellStyle2.Font = new Font("Microsoft YaHei UI", 9F);
+            dataGridViewCellStyle2.ForeColor = Color.FromArgb(30, 41, 59);
+            dataGridViewCellStyle2.SelectionBackColor = Color.FromArgb(233, 239, 247);
+            dataGridViewCellStyle2.SelectionForeColor = Color.FromArgb(30, 41, 59);
+            dataGridViewCellStyle2.WrapMode = DataGridViewTriState.True;
+            dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             dataGridView1.ColumnHeadersHeight = 34;
+            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = SystemColors.Window;
+            dataGridViewCellStyle3.Font = new Font("Microsoft YaHei UI", 9F);
+            dataGridViewCellStyle3.ForeColor = Color.FromArgb(30, 41, 59);
+            dataGridViewCellStyle3.SelectionBackColor = Color.FromArgb(218, 232, 251);
+            dataGridViewCellStyle3.SelectionForeColor = Color.FromArgb(20, 51, 93);
+            dataGridViewCellStyle3.WrapMode = DataGridViewTriState.False;
+            dataGridView1.DefaultCellStyle = dataGridViewCellStyle3;
             dataGridView1.Dock = DockStyle.Fill;
             dataGridView1.EnableHeadersVisualStyles = false;
-            dataGridView1.GridColor = Color.FromArgb(224, 229, 235);
+            dataGridView1.GridColor = Color.FromArgb(211, 221, 233);
             dataGridView1.Location = new Point(8, 8);
             dataGridView1.Name = "dataGridView1";
             dataGridView1.ReadOnly = true;
             dataGridView1.RowHeadersWidth = 48;
-            dataGridView1.RowTemplate.Height = 30;
+            dataGridView1.RowTemplate.Height = 32;
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridView1.Size = new Size(965, 297);
+            dataGridView1.Size = new Size(964, 301);
             dataGridView1.TabIndex = 0;
             // 
             // MessageTabPage
@@ -771,7 +1144,7 @@ namespace c_lan
             MessageTabPage.Location = new Point(4, 33);
             MessageTabPage.Name = "MessageTabPage";
             MessageTabPage.Padding = new Padding(8);
-            MessageTabPage.Size = new Size(981, 313);
+            MessageTabPage.Size = new Size(980, 317);
             MessageTabPage.TabIndex = 1;
             MessageTabPage.Text = "执行消息";
             MessageTabPage.UseVisualStyleBackColor = true;
@@ -782,32 +1155,33 @@ namespace c_lan
             MessageTextBox.BorderStyle = BorderStyle.None;
             MessageTextBox.Dock = DockStyle.Fill;
             MessageTextBox.Font = new Font("Consolas", 10F);
-            MessageTextBox.ForeColor = Color.FromArgb(61, 73, 89);
+            MessageTextBox.ForeColor = Color.FromArgb(83, 99, 119);
             MessageTextBox.Location = new Point(8, 8);
             MessageTextBox.Name = "MessageTextBox";
             MessageTextBox.ReadOnly = true;
-            MessageTextBox.Size = new Size(965, 297);
+            MessageTextBox.Size = new Size(964, 301);
             MessageTextBox.TabIndex = 0;
             MessageTextBox.Text = "等待执行查询…";
             // 
             // ResultSummaryPanel
             // 
-            ResultSummaryPanel.BackColor = Color.FromArgb(248, 249, 251);
+            ResultSummaryPanel.BackColor = Color.FromArgb(244, 247, 251);
             ResultSummaryPanel.Controls.Add(ResultStateLabel);
             ResultSummaryPanel.Controls.Add(ResultSummaryLabel);
             ResultSummaryPanel.Dock = DockStyle.Top;
             ResultSummaryPanel.Location = new Point(0, 0);
             ResultSummaryPanel.Name = "ResultSummaryPanel";
-            ResultSummaryPanel.Size = new Size(989, 40);
+            ResultSummaryPanel.Size = new Size(988, 40);
             ResultSummaryPanel.TabIndex = 22;
             // 
             // ResultStateLabel
             // 
-            ResultStateLabel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            ResultStateLabel.ForeColor = Color.FromArgb(112, 122, 136);
-            ResultStateLabel.Location = new Point(690, 9);
+            ResultStateLabel.Dock = DockStyle.Right;
+            ResultStateLabel.ForeColor = Color.FromArgb(83, 99, 119);
+            ResultStateLabel.Location = new Point(668, 0);
             ResultStateLabel.Name = "ResultStateLabel";
-            ResultStateLabel.Size = new Size(276, 20);
+            ResultStateLabel.Padding = new Padding(0, 0, 16, 0);
+            ResultStateLabel.Size = new Size(320, 40);
             ResultStateLabel.TabIndex = 0;
             ResultStateLabel.Text = "尚未执行查询";
             ResultStateLabel.TextAlign = ContentAlignment.MiddleRight;
@@ -825,6 +1199,8 @@ namespace c_lan
             // 
             // MainStatusStrip
             // 
+            MainStatusStrip.BackColor = Color.FromArgb(244, 247, 251);
+            MainStatusStrip.ForeColor = Color.FromArgb(83, 99, 119);
             MainStatusStrip.ImageScalingSize = new Size(20, 20);
             MainStatusStrip.Items.AddRange(new ToolStripItem[] { ConnectionStatusLabel, StatusSpringLabel, CurrentDatabaseStatusLabel });
             MainStatusStrip.Location = new Point(0, 802);
@@ -836,37 +1212,65 @@ namespace c_lan
             // 
             ConnectionStatusLabel.ForeColor = Color.FromArgb(112, 122, 136);
             ConnectionStatusLabel.Name = "ConnectionStatusLabel";
-            ConnectionStatusLabel.Size = new Size(68, 20);
+            ConnectionStatusLabel.Size = new Size(70, 20);
             ConnectionStatusLabel.Text = "● 未连接";
             // 
             // StatusSpringLabel
             // 
             StatusSpringLabel.Name = "StatusSpringLabel";
-            StatusSpringLabel.Size = new Size(1187, 20);
+            StatusSpringLabel.Size = new Size(1178, 20);
             StatusSpringLabel.Spring = true;
             // 
             // CurrentDatabaseStatusLabel
             // 
             CurrentDatabaseStatusLabel.ForeColor = Color.FromArgb(112, 122, 136);
             CurrentDatabaseStatusLabel.Name = "CurrentDatabaseStatusLabel";
-            CurrentDatabaseStatusLabel.Size = new Size(114, 20);
+            CurrentDatabaseStatusLabel.Size = new Size(121, 20);
             CurrentDatabaseStatusLabel.Text = "数据库：未选择";
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.White;
+            BackColor = Color.FromArgb(244, 247, 251);
             ClientSize = new Size(1384, 828);
             Controls.Add(MainSplitContainer);
             Controls.Add(HeaderPanel);
             Controls.Add(MainStatusStrip);
             Font = new Font("Microsoft YaHei UI", 9F);
-            MinimumSize = new Size(1120, 720);
+            ForeColor = Color.FromArgb(30, 41, 59);
+            MinimumSize = new Size(1120, 800);
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "多数据库浏览器";
+            KeyPreview = true;
+            Text = "多数据库浏览器 · MySQL / SQLite / SQL Server / Oracle";
             WindowState = FormWindowState.Maximized;
+            SqlEditorContextMenu.ResumeLayout(false);
+            _databaseObjectsTabPage.ResumeLayout(false);
+            _hostInputPanel.ResumeLayout(false);
+            _hostInputPanel.PerformLayout();
+            ConnectionLayout.ResumeLayout(false);
+            ConnectionLayout.PerformLayout();
+            ConnectionHeading.ResumeLayout(false);
+            ConnectionHeading.PerformLayout();
+            SavedConnectionsPanel.ResumeLayout(false);
+            ConnectionFieldsTable.ResumeLayout(false);
+            ConnectionFieldsTable.PerformLayout();
+            PortInputPanel.ResumeLayout(false);
+            PortInputPanel.PerformLayout();
+            PasswordPanel.ResumeLayout(false);
+            PasswordPanel.PerformLayout();
+            ConnectionOptionsPanel.ResumeLayout(false);
+            ConnectionOptionsPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)TimeoutNumericUpDown).EndInit();
+            ConnectionButtonTable.ResumeLayout(false);
+            SecondaryButtonTable.ResumeLayout(false);
+            AuthenticationPanel.ResumeLayout(false);
+            AuthenticationPanel.PerformLayout();
+            QueryParametersPanel.ResumeLayout(false);
+            QueryParametersPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)QueryTimeoutNumericUpDown).EndInit();
+            QueryActionsPanel.ResumeLayout(false);
             HeaderPanel.ResumeLayout(false);
             HeaderPanel.PerformLayout();
             MainSplitContainer.Panel1.ResumeLayout(false);
@@ -875,15 +1279,6 @@ namespace c_lan
             MainSplitContainer.ResumeLayout(false);
             ConnectionPanel.ResumeLayout(false);
             ConnectionPanel.PerformLayout();
-            ConnectionFieldsTable.ResumeLayout(false);
-            ConnectionFieldsTable.PerformLayout();
-            PasswordPanel.ResumeLayout(false);
-            PasswordPanel.PerformLayout();
-            ConnectionOptionsPanel.ResumeLayout(false);
-            ConnectionOptionsPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)TimeoutNumericUpDown).EndInit();
-            ConnectionButtonTable.ResumeLayout(false);
-            SecondaryButtonTable.ResumeLayout(false);
             WorkspaceSplitContainer.Panel1.ResumeLayout(false);
             WorkspaceSplitContainer.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)WorkspaceSplitContainer).EndInit();
@@ -892,8 +1287,6 @@ namespace c_lan
             QueryPanel.PerformLayout();
             QueryEditorPanel.ResumeLayout(false);
             QueryToolbarPanel.ResumeLayout(false);
-            QueryToolbarPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)QueryTimeoutNumericUpDown).EndInit();
             ResultTabControl.ResumeLayout(false);
             ResultTabPage.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
@@ -908,8 +1301,31 @@ namespace c_lan
 
         #endregion
 
+        private ContextMenuStrip SqlEditorContextMenu;
+        private ToolStripMenuItem CopySqlMenuItem;
+        private ToolStripMenuItem PasteSqlMenuItem;
+        private ToolStripMenuItem SelectAllSqlMenuItem;
+        private ComboBox SavedConnectionsComboBox;
+        private Button NewConnectionButton;
+        private TableLayoutPanel SavedConnectionsPanel;
+        private FlowLayoutPanel AuthenticationPanel;
+        private CheckBox IntegratedSecurityCheckBox;
+        private CheckBox TrustCertificateCheckBox;
+        private Button RefreshButton;
+        private Button ExportButton;
+        private TreeView _databaseTreeView;
+        private TabPage _databaseObjectsTabPage;
+        private ComboBox _databaseTypeComboBox;
+        private Button _browseSqliteButton;
+        private Panel _hostInputPanel;
+        private ComboBox _sqliteFileComboBox;
+        private TableLayoutPanel ConnectionLayout;
+        private TableLayoutPanel ConnectionHeading;
+        private FlowLayoutPanel QueryParametersPanel;
+        private FlowLayoutPanel QueryActionsPanel;
+        private Panel PortInputPanel;
+        private FolderBrowserDialog SqliteFolderDialog;
         private Panel HeaderPanel;
-        private Label HeaderSubtitleLabel;
         private Label HeaderTitleLabel;
         private SplitContainer MainSplitContainer;
         private Panel ConnectionPanel;

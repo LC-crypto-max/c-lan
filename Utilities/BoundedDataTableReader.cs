@@ -19,7 +19,11 @@ namespace c_lan.Utilities
             DataTable table = new DataTable();
             for (int i = 0; i < reader.FieldCount; i++)
             {
-                table.Columns.Add(reader.GetName(i), typeof(object));
+                string name = reader.GetName(i);
+                if (string.IsNullOrWhiteSpace(name)) name = $"Column{i + 1}";
+                string uniqueName = name;
+                for (int suffix = 2; table.Columns.Contains(uniqueName); suffix++) uniqueName = $"{name}_{suffix}";
+                table.Columns.Add(uniqueName, typeof(object));
             }
 
             while (table.Rows.Count <= maxRows && await reader.ReadAsync(token))

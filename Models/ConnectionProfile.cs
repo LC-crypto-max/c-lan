@@ -17,15 +17,12 @@
         public String UserName { get; set; } = String.Empty;
         public String Password { get; set; } = String.Empty;
 
+        public bool IntegratedSecurity { get; set; }
+        public bool TrustServerCertificate { get; set; }
+        public string ServiceName { get; set; } = string.Empty;
+
         //增加SQLite相关字段
         public String DatabaseFilePath {  get; set; } = String.Empty;
-/*        public bool IsComplete()
-        {
-            return !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password);
-        }
-        public bool IsValid()
-        {
-            return !String.IsNullOrWhiteSpace(ConnectionName) && !String.IsNullOrWhiteSpace(Host) && Port > 0 && Port<=65535 && !String.IsNullOrWhiteSpace(UserName) && !String.IsNullOrWhiteSpace(Password) && ConnectionTimeout > 0;
-        }*/
+
     }
 }

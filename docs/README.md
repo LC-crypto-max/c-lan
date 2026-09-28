@@ -4,6 +4,8 @@
 
 当前文档：
 
+- [main 演示版操作与验收](./main-demo-guide.md)
+
 - [项目规划与架构思路](./project-plan.md)
 - [Oracle、SQL Server、MySQL 适配思路](./database-providers.md)
 
@@ -17,3 +19,6 @@
 - 风险、测试点和排错思路
 
 不直接编写项目业务代码。
+
+
+2026-09-27：本次按用户明确要求直接实施 main 的界面迁移与四数据库查询完善。原协作边界不限制本次实施。

@@ -189,7 +189,10 @@ namespace c_lan.Services
                 SSLmode = source.SSLmode,
                 UserName = source.UserName.Trim(),
                 Password = source.SavePassword ? source.Password : String.Empty,
-                DatabaseFilePath = source.DatabaseFilePath.Trim()
+                DatabaseFilePath = source.DatabaseFilePath.Trim(),
+                ServiceName = source.ServiceName.Trim(),
+                IntegratedSecurity = source.IntegratedSecurity,
+                TrustServerCertificate = source.TrustServerCertificate
             };
         }
 

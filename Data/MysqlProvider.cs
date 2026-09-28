@@ -30,11 +30,6 @@ namespace c_lan.Data
                 return "连接用户名不能为空";
             }
 
-            if (string.IsNullOrWhiteSpace(profile.Password))
-            {
-                return "连接密码不能为空";
-            }
-
             return null;
         }
         //测试连接方法
@@ -84,7 +79,7 @@ namespace c_lan.Data
                 using var cmd = new MySqlCommand("SHOW DATABASES", conn);
                 using var reader = await cmd.ExecuteReaderAsync(token);
                 var databases = new List<string>();
-                while (reader.Read())
+                while (await reader.ReadAsync(token))
                 {
                     //第一列就是数据库名称，GetString可以避免把null加入集合。
                     databases.Add(reader.GetString(0));
@@ -135,7 +130,7 @@ namespace c_lan.Data
         }
 
         //读取表或视图的字段信息
-        public async Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName,CancellationToken token)
+        public async Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName,CancellationToken token, string? schemaName = null)
         {
             if (string.IsNullOrWhiteSpace(databaseName))
             {
@@ -191,7 +186,7 @@ namespace c_lan.Data
         }
 
         //预览从元数据树中选择的表或视图，最多向UI返回maxRows行
-        public async Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,int maxRows, CancellationToken token)
+        public async Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,int maxRows, CancellationToken token, string? schemaName = null)
         {
             QueryResult result = new QueryResult();
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -216,14 +211,7 @@ namespace c_lan.Data
                 cmd.CommandTimeout = (int)profile.ConnectionTimeout;
                 cmd.Parameters.AddWithValue("@fetchRows", fetchRows);
                 using var reader = await cmd.ExecuteReaderAsync(token);
-                DataTable table = new DataTable();
-                table.Load(reader);
-
-                bool isTruncated = table.Rows.Count > safeMaxRows;
-                if (isTruncated)
-                {
-                    table.Rows.RemoveAt(table.Rows.Count - 1);
-                }
+                (DataTable table, bool isTruncated) = await BoundedDataTableReader.LoadAsync(reader, safeMaxRows, token);
 
                 result.IsSuccess = true;
                 result.Rows = table;
@@ -295,13 +283,17 @@ namespace c_lan.Data
             return queryresult;
         }
         //连接器需要，构建连接字符串
-        private string MysqlConnectionStringBuilder(ConnectionProfile profile, string? databaseName = null){
+        public static string MysqlConnectionStringBuilder(ConnectionProfile profile, string? databaseName = null){
             MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder();
             builder.Server = profile.Host;
             builder.Port = profile.Port;
             builder.UserID = profile.UserName;
             builder.Password = profile.Password;
-            builder.ConnectionTimeout = profile.ConnectionTimeout;
+            builder.ConnectionTimeout = Math.Clamp(profile.ConnectionTimeout, 1u, 3600u);
+            builder.DefaultCommandTimeout = builder.ConnectionTimeout;
+            if (!string.IsNullOrWhiteSpace(profile.CharacterSet)) builder.CharacterSet = profile.CharacterSet;
+            if (!string.IsNullOrWhiteSpace(profile.SSLmode)) builder.SslMode = Enum.Parse<MySqlSslMode>(profile.SSLmode, true);
+            databaseName ??= profile.DefaultDatabase;
             if (!string.IsNullOrWhiteSpace(databaseName))
             {
                 builder.Database = databaseName;

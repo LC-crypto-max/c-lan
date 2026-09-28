@@ -29,7 +29,7 @@ namespace c_lan.Services
             return provider.GetObjectsAsync(profile, databaseName, token);
         }
 
-        public Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName,CancellationToken token)
+        public Task<List<ColumnInfo>> GetColumnsAsync(ConnectionProfile profile, string databaseName, string objectName,CancellationToken token, string? schemaName = null)
         {
             if (string.IsNullOrWhiteSpace(databaseName))
             {
@@ -42,10 +42,10 @@ namespace c_lan.Services
             }
 
             IDatabaseProvider provider = GetValidatedProvider(profile);
-            return provider.GetColumnsAsync(profile, databaseName, objectName, token);
+            return provider.GetColumnsAsync(profile, databaseName, objectName, token, schemaName);
         }
 
-        public Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,int maxRows, CancellationToken token)
+        public Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,int maxRows, CancellationToken token, string? schemaName = null)
         {
             if (maxRows <= 0 || maxRows > 200)
             {
@@ -54,7 +54,7 @@ namespace c_lan.Services
 
             IDatabaseProvider provider = GetValidatedProvider(profile);
 
-            return provider.PreviewAsync(profile, databaseName, objectName, maxRows, token);
+            return provider.PreviewAsync(profile, databaseName, objectName, maxRows, token, schemaName);
         }
 
         private IDatabaseProvider GetValidatedProvider(ConnectionProfile profile)

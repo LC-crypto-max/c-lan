@@ -17,7 +17,8 @@ namespace c_lan.Data
                 //此处使用=>的写法
                 DatabaseType.MySQL => new MysqlProvider(),
                 DatabaseType.SQLite => new SQLiteProvider(),
-                //DatabaseType.Oracle => new OracleDatabaseProvider(),
+                DatabaseType.Oracle => new OracleProvider(),
+                DatabaseType.SqlServer => new SqlServerProvider(),
                 _ => throw new NotSupportedException($"Unsupported database type: {databaseType}"),
             };
         }

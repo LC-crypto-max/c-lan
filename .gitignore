@@ -482,5 +482,21 @@ $RECYCLE.BIN/
 *.swp
 
 # Project documentation and JSON files
-/docs/
+/docs/*
+!/docs/main-demo-guide.md
+!/docs/superpowers/
+/docs/superpowers/*
+!/docs/superpowers/plans/
+/docs/superpowers/plans/*
+!/docs/superpowers/plans/2026-09-27-main-browser.md
 *.json
+
+# Local deployment, check, and probe artifacts
+/deploy/
+/.deploy-staging/
+/.tmp-validator-probe/
+/Checks/
+/demo_sqlite.db
+
+# Local database samples (data and import scripts)
+/database-samples/

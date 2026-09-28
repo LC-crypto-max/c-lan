@@ -1,53 +1,66 @@
-namespace c_lan.Utilities
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace c_lan.Utilities;
+
+public sealed class ReadOnlySqlValidator
 {
-    public sealed class ReadOnlySqlValidator
+    public string? Validate(string sql) => Validate(sql, out _);
+
+    public string? Validate(string sql, out string preparedSql)
     {
-        public string? Validate(string sql)
+        preparedSql = sql;
+        int terminator = -1;
+        if (string.IsNullOrWhiteSpace(sql)) return "请输入要执行的 SQL";
+        // 扫描语句结构，字符串、引用列名及注释不参与关键字判断。
+        // 客户端检查不能替代数据库只读账号。
+        StringBuilder code = new();
+        for (int i = 0; i < sql.Length; i++)
         {
-            //这里只做第一版的基本拦截，不把它当成完整的SQL语法分析器。
-            if (string.IsNullOrWhiteSpace(sql)) return "请输入要执行的 SQL";
-            string text = RemoveLeadingComments(sql).Trim();
-            if (string.IsNullOrWhiteSpace(text)) return "请输入要执行的 SQL";
-            if (text.EndsWith(';')) text = text[..^1].TrimEnd();
-            //允许用户在语句末尾写一个分号，但不允许用分号拼接多条语句。
-            if (text.Contains(';')) return "一次只能执行一条 SQL";
-            string upperSql = text.ToUpperInvariant();
-            string firstKeyword = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0].ToUpperInvariant();
-            if (firstKeyword is not ("SELECT" or "WITH"))
-                return "只允许执行 SELECT 查询";
-            string[] forbiddenWords = { "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH", "REPLACE" };
-            foreach (string word in forbiddenWords)
+            char c = sql[i];
+            if (c == '#') return "暂不支持 # 注释或临时表，请使用 -- 注释";
+            if (c == '-' && i + 2 < sql.Length && sql[i + 1] == '-' && char.IsWhiteSpace(sql[i + 2]))
             {
-                if (upperSql.Contains(word, StringComparison.Ordinal)) return $"只读模式不允许执行 {word} 操作";
+                while (i < sql.Length && sql[i] != '\n' && sql[i] != '\r') i++;
+                code.Append(' ');
             }
-            return null;
-        }
-
-        private static string RemoveLeadingComments(string sql)
-        {
-            int start = 0;
-            while (start < sql.Length)
+            else if (c == '/' && i + 1 < sql.Length && sql[i + 1] == '*')
             {
-                while (start < sql.Length && char.IsWhiteSpace(sql[start])) start++;
-
-                if (start + 1 < sql.Length && sql[start] == '-' && sql[start + 1] == '-')
-                {
-                    int lineEnd = sql.IndexOfAny(new[] { '\r', '\n' }, start + 2);
-                    start = lineEnd < 0 ? sql.Length : lineEnd;
-                    continue;
-                }
-
-                if (start + 1 < sql.Length && sql[start] == '/' && sql[start + 1] == '*')
-                {
-                    int commentEnd = sql.IndexOf("*/", start + 2, StringComparison.Ordinal);
-                    start = commentEnd < 0 ? sql.Length : commentEnd + 2;
-                    continue;
-                }
-
-                break;
+                if (i + 2 < sql.Length && (sql[i + 2] == '!' || sql[i + 2] == '+'))
+                    return "暂不支持可执行注释或查询提示";
+                int end = sql.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                if (end < 0 || sql.IndexOf("/*", i + 2, end - i - 2, StringComparison.Ordinal) >= 0)
+                    return "注释未结束或包含嵌套注释";
+                i = end + 1;
+                code.Append(' ');
             }
-
-            return sql[start..];
+            else if (c is '\'' or '"' or '`' or '[')
+            {
+                char close = c == '[' ? ']' : c;
+                bool closed = false;
+                while (++i < sql.Length)
+                {
+                    if (sql[i] == '\\') return "暂不支持反斜杠转义，请使用 SQL 标准引号转义";
+                    if (sql[i] != close) continue;
+                    if (i + 1 < sql.Length && sql[i + 1] == close) { i++; continue; }
+                    closed = true;
+                    break;
+                }
+                if (!closed) return "字符串或标识符引号未结束";
+                code.Append(" literal ");
+            }
+            else { if (c == ';') terminator = i; code.Append(c); }
         }
+        string text = code.ToString().Trim();
+        if (text.EndsWith(';')) { text = text[..^1].TrimEnd(); preparedSql = sql.Remove(terminator, 1); }
+        if (text.Contains(';')) return "一次只能执行一条 SQL";
+        string[] words = Regex.Matches(text, @"[\p{L}_][\p{L}\p{N}_$]*")
+            .Select(m => m.Value.ToUpperInvariant()).ToArray();
+        if (words.Length == 0 || words[0] is not ("SELECT" or "WITH")) return "只允许执行 SELECT 查询";
+        string[] forbidden = { "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH",
+            "REPLACE", "INTO", "MERGE", "EXEC", "EXECUTE", "CALL", "TRUNCATE", "GRANT", "REVOKE",
+            "PRAGMA", "VACUUM", "REINDEX", "LOAD_FILE", "OUTFILE", "DUMPFILE", "LOCK", "UNLOCK", "NEXTVAL", "NEXT" };
+        string? rejected = words.FirstOrDefault(w => forbidden.Contains(w));
+        return rejected is null ? null : $"只读模式不允许执行 {rejected} 操作";
     }
 }
