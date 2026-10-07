@@ -495,7 +495,9 @@ $RECYCLE.BIN/
 /deploy/
 /.deploy-staging/
 /.tmp-validator-probe/
-/Checks/
+/Checks/*
+!/Checks/*.cs
+!/Checks/*.csproj
 /demo_sqlite.db
 
 # Local database samples (data and import scripts)

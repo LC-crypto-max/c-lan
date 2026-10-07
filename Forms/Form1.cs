@@ -69,6 +69,7 @@ public partial class Form1 : Form
         ShowPasswordCheckBox.CheckedChanged += (_, _) => PasswordText.UseSystemPasswordChar = !ShowPasswordCheckBox.Checked;
         IntegratedSecurityCheckBox.CheckedChanged += (_, _) => { UpdateDatabaseTypeUi(); InvalidateConnection(); };
         TrustCertificateCheckBox.CheckedChanged += (_, _) => InvalidateConnection();
+        TimeoutNumericUpDown.ValueChanged += (_, _) => InvalidateConnection();
         _browseSqliteButton.Click += (_, _) =>
         {
             if (SqliteFolderDialog.ShowDialog(this) == DialogResult.OK) { HostText.Text = SqliteFolderDialog.SelectedPath; RefreshSqliteFiles(); }

@@ -43,11 +43,42 @@ public sealed class SqlServerProvider : ServerDatabaseProvider
             CASE WHEN EXISTS (SELECT 1 FROM sys.indexes i JOIN sys.index_columns ic
               ON ic.object_id=i.object_id AND ic.index_id=i.index_id
               WHERE i.object_id=c.object_id AND i.is_primary_key=1 AND ic.column_id=c.column_id) THEN 1 ELSE 0 END,
-            dc.definition
+            dc.definition, c.max_length, c.precision, c.scale, c.is_identity, t.is_user_defined
         FROM sys.columns c JOIN sys.objects o ON o.object_id=c.object_id
         JOIN sys.schemas s ON s.schema_id=o.schema_id
         JOIN sys.types t ON t.user_type_id=c.user_type_id
         LEFT JOIN sys.default_constraints dc ON dc.object_id=c.default_object_id
         WHERE s.name=@scope AND o.name=@objectName ORDER BY c.column_id
         """;
+
+    protected override ColumnInfo ReadColumn(DbDataReader reader)
+    {
+        var column = base.ReadColumn(reader);
+        int? length = ReadNullableInt(reader, "max_length");
+        int? precision = ReadNullableInt(reader, "precision");
+        int? scale = ReadNullableInt(reader, "scale");
+        column.IsAutoIncrement = Convert.ToBoolean(reader["is_identity"]);
+        // 别名类型保留原名，不能把内置类型的参数附加到别名后。
+        if (Convert.ToBoolean(reader["is_user_defined"])) return column;
+        string type = column.DataType.ToLowerInvariant();
+        if (type is "char" or "varchar" or "nchar" or "nvarchar" or "binary" or "varbinary")
+        {
+            if (length > 0 && type is ("nchar" or "nvarchar")) length /= 2;
+            column.MaxLength = length;
+            if (length.HasValue)
+                column.FullColumnType = length == -1 ? $"{column.DataType}(max)" : FormattableString.Invariant($"{column.DataType}({length})");
+        }
+        if (type is "decimal" or "numeric" or "float" or "real" or "money" or "smallmoney" or "bigint" or "int" or "smallint" or "tinyint")
+        {
+            column.NumericPrecision = precision;
+            column.NumericScale = scale;
+        }
+        if (type is ("decimal" or "numeric") && precision.HasValue && scale.HasValue)
+            column.FullColumnType = FormattableString.Invariant($"{column.DataType}({precision},{scale})");
+        else if (type == "float" && precision.HasValue)
+            column.FullColumnType = FormattableString.Invariant($"{column.DataType}({precision})");
+        else if (type is ("time" or "datetime2" or "datetimeoffset") && scale.HasValue)
+            column.FullColumnType = FormattableString.Invariant($"{column.DataType}({scale})");
+        return column;
+    }
 }

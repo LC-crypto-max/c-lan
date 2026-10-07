@@ -69,14 +69,23 @@ public abstract class ServerDatabaseProvider : IDatabaseProvider
         List<ColumnInfo> result = new();
         while (await reader.ReadAsync(token).ConfigureAwait(false))
         {
-            result.Add(new() { ColumnName = reader.GetString(0), DataType = reader.GetString(1),
-                FullColumnType = reader.GetString(1), OrdinalPosition = Convert.ToInt32(reader.GetValue(2)),
-                IsNullable = Convert.ToInt32(reader.GetValue(3)) == 1,
-                IsPrimaryKey = Convert.ToInt32(reader.GetValue(4)) == 1,
-                DefaultValue = reader.IsDBNull(5) ? null : Convert.ToString(reader.GetValue(5)) });
+            result.Add(ReadColumn(reader));
         }
         return result;
     }
+
+    // 前六列为公共元数据，其余字段由各数据库按自己的类型规则解释。
+    protected virtual ColumnInfo ReadColumn(DbDataReader reader) => new()
+    {
+        ColumnName = reader.GetString(0), DataType = reader.GetString(1),
+        FullColumnType = reader.GetString(1), OrdinalPosition = Convert.ToInt32(reader.GetValue(2)),
+        IsNullable = Convert.ToInt32(reader.GetValue(3)) == 1,
+        IsPrimaryKey = Convert.ToInt32(reader.GetValue(4)) == 1,
+        DefaultValue = reader.IsDBNull(5) ? null : Convert.ToString(reader.GetValue(5))
+    };
+
+    protected static int? ReadNullableInt(DbDataReader reader, string name) =>
+        reader[name] is DBNull ? null : Convert.ToInt32(reader[name]);
 
     public Task<QueryResult> PreviewAsync(ConnectionProfile profile, string databaseName, string objectName,
         int maxRows, CancellationToken token, string? schemaName = null)

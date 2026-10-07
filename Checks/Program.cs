@@ -11,6 +11,7 @@ using c_lan.Utilities;
 using Microsoft.Data.Sqlite;
 
 var validator = new ReadOnlySqlValidator();
+ColumnMetadataChecks.Run();
 Assert(validator.Validate("SELECT updated_at, 'DELETE; ok' FROM t") is null, "普通列名和字符串不应误判");
 Assert(validator.Validate("SELECT * INTO backup FROM t") is not null, "SELECT INTO 必须拒绝");
 Assert(validator.Validate("SELECT 1; DELETE FROM t") is not null, "多语句必须拒绝");
@@ -226,6 +227,19 @@ internal static class UiChecks
                     using Bitmap demo = new(form.Width, form.Height);
                     form.DrawToBitmap(demo, new Rectangle(Point.Empty, demo.Size));
                     demo.Save(Path.Combine(AppContext.BaseDirectory, "ui-demo.png"));
+                    // 连接参数变化后必须清除旧连接，重新连接后使用新的超时。
+                    var connectionTimeout = Find<NumericUpDown>(form, "TimeoutNumericUpDown");
+                    connectionTimeout.Value += 1;
+                    if (tree.Nodes.Count != 0 || grid.DataSource is not null || Find<Button>(form, "ExecuteQueryButton").Enabled)
+                        throw new Exception("修改连接超时后旧连接仍可使用");
+                    Find<Button>(form, "ConnectButton").PerformClick(); await WaitForIdle(form);
+                    var active = (ConnectionProfile?)typeof(Form1)
+                        .GetField("_activeConnectionProfile", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(form);
+                    if (active?.ConnectionTimeout != (uint)connectionTimeout.Value || tree.Nodes.Count != 1)
+                        throw new Exception("重新连接没有应用新的连接超时");
+                    Find<Button>(form, "ExecuteQueryButton").PerformClick(); await WaitForIdle(form);
+                    if (grid.DataSource is not DataTable afterReconnect || afterReconnect.Rows.Count != 10)
+                        throw new Exception("修改连接超时并重新连接后查询失败");
                 }
                 catch (Exception ex) { failure = ex; }
                 finally { form.Close(); }

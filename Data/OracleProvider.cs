@@ -45,7 +45,37 @@ public sealed class OracleProvider : ServerDatabaseProvider
           CASE WHEN EXISTS (SELECT 1 FROM ALL_CONSTRAINTS k JOIN ALL_CONS_COLUMNS kc
             ON kc.OWNER=k.OWNER AND kc.CONSTRAINT_NAME=k.CONSTRAINT_NAME
             WHERE k.CONSTRAINT_TYPE='P' AND k.OWNER=c.OWNER AND k.TABLE_NAME=c.TABLE_NAME
-              AND kc.COLUMN_NAME=c.COLUMN_NAME) THEN 1 ELSE 0 END, c.DATA_DEFAULT
+              AND kc.COLUMN_NAME=c.COLUMN_NAME) THEN 1 ELSE 0 END, c.DATA_DEFAULT,
+          c.DATA_LENGTH, c.CHAR_LENGTH, c.CHAR_USED, c.DATA_PRECISION, c.DATA_SCALE
         FROM ALL_TAB_COLUMNS c WHERE c.OWNER=:scope AND c.TABLE_NAME=:objectName ORDER BY c.COLUMN_ID
         """;
+
+    protected override ColumnInfo ReadColumn(DbDataReader reader)
+    {
+        var column = base.ReadColumn(reader);
+        column.NumericPrecision = ReadNullableInt(reader, "DATA_PRECISION");
+        column.NumericScale = ReadNullableInt(reader, "DATA_SCALE");
+        string type = column.DataType.ToUpperInvariant();
+        if (type is "CHAR" or "VARCHAR2" or "NCHAR" or "NVARCHAR2" or "RAW")
+        {
+            bool national = type is "NCHAR" or "NVARCHAR2";
+            bool characters = national || Convert.ToString(reader["CHAR_USED"]) == "C";
+            column.MaxLength = ReadNullableInt(reader, characters ? "CHAR_LENGTH" : "DATA_LENGTH");
+            string semantics = national || type == "RAW" ? "" : characters ? " CHAR" : " BYTE";
+            if (column.MaxLength.HasValue)
+                column.FullColumnType = FormattableString.Invariant($"{column.DataType}({column.MaxLength}{semantics})");
+        }
+        else if (type == "NUMBER")
+        {
+            // 无精度、无 scale 的 NUMBER 不等同于 NUMBER(38,0)。
+            if (column.NumericPrecision.HasValue)
+                column.FullColumnType = FormattableString.Invariant($"{column.DataType}({column.NumericPrecision},{column.NumericScale ?? 0})");
+            else if (column.NumericScale.HasValue)
+                column.FullColumnType = FormattableString.Invariant($"{column.DataType}(*,{column.NumericScale})");
+        }
+        else if (type == "FLOAT" && column.NumericPrecision.HasValue)
+            column.FullColumnType = FormattableString.Invariant($"{column.DataType}({column.NumericPrecision})");
+        // TIMESTAMP / INTERVAL 的 DATA_TYPE 自带参数，直接保留。
+        return column;
+    }
 }
