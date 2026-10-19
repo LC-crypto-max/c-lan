@@ -12,10 +12,9 @@ namespace c_lan.Utilities
             if (text.EndsWith(';')) text = text[..^1].TrimEnd();
             //允许用户在语句末尾写一个分号，但不允许用分号拼接多条语句。
             if (text.Contains(';')) return "一次只能执行一条 SQL";
+            if (!isReadOnly) return null;
             string upperSql = text.ToUpperInvariant();
-            string firstKeyword = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0].ToUpperInvariant();
-            if (firstKeyword == "ALTER" && !isReadOnly)
-                return null;
+            string firstKeyword = GetFirstKeyword(text);
             if (firstKeyword is not ("SELECT" or "WITH"))
                 return "只允许执行 SELECT 查询";
             string[] forbiddenWords = { "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH", "REPLACE" };
@@ -25,6 +24,14 @@ namespace c_lan.Utilities
                 if (upperSql.Contains(word, StringComparison.Ordinal)) return $"只读模式不允许执行 {word} 操作";
             }
             return null;
+        }
+
+        internal static string GetFirstKeyword(string sql)
+        {
+            string text = RemoveLeadingComments(sql).TrimStart();
+            int end = 0;
+            while (end < text.Length && char.IsLetter(text[end])) end++;
+            return text[..end].ToUpperInvariant();
         }
 
         private static string RemoveLeadingComments(string sql)

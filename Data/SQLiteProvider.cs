@@ -135,15 +135,15 @@ namespace c_lan.Data
                 using var conn = new SqliteConnection(BuildConnectionString(profile, request.IsReadOnly));
                 await conn.OpenAsync(token);
                 using var cmd = new SqliteCommand(request.SqlText, conn) { CommandTimeout = request.TimeoutSeconds };
-                if (request.SqlText.TrimStart().StartsWith("ALTER", StringComparison.OrdinalIgnoreCase))
+                using var reader = await cmd.ExecuteReaderAsync(token);
+                if (reader.FieldCount == 0)
                 {
-                    await cmd.ExecuteNonQueryAsync(token);
                     result.IsSuccess = true;
-                    result.Rows = new DataTable();
-                    result.RowCount = 0;
+                    // SQLite的DDL可能返回上次写入计数，只为明确的DML展示影响行数。
+                    if (ReadOnlySqlValidator.GetFirstKeyword(request.SqlText) is "INSERT" or "UPDATE" or "DELETE" or "REPLACE")
+                        result.AffectedRows = reader.RecordsAffected >= 0 ? reader.RecordsAffected : null;
                     return result;
                 }
-                using var reader = await cmd.ExecuteReaderAsync(token);
                 (DataTable table, bool truncated) =
                     await BoundedDataTableReader.LoadAsync(reader, safeMaxRows, token);
                 result.IsSuccess = true; result.Rows = table; result.RowCount = table.Rows.Count; result.IsTruncated = truncated;

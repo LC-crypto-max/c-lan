@@ -93,6 +93,16 @@ namespace c_lan
                 }
 
                 dataGridView1.DataSource = result.Rows;
+                if (result.Rows is null)
+                {
+                    ResultSummaryLabel.Text = "执行结果";
+                    string affectedText = result.AffectedRows.HasValue ? $"影响 {result.AffectedRows.Value} 行，" : String.Empty;
+                    ResultStateLabel.Text = $"执行成功，{affectedText}{result.ExecutionTime} ms";
+                    MessageTextBox.Text = result.AffectedRows.HasValue
+                        ? $"SQL 执行成功，影响 {result.AffectedRows.Value} 行。" : "SQL 执行成功。";
+                    ResultTabControl.SelectedTab = MessageTabPage;
+                    return;
+                }
                 ResultSummaryLabel.Text = "查询结果";
                 string truncatedText = result.IsTruncated ? "，结果已截断" : String.Empty;
                 ResultStateLabel.Text = $"{result.RowCount ?? 0} 行，{result.ExecutionTime} ms{truncatedText}";

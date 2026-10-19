@@ -10,6 +10,7 @@ namespace c_lan.Models
         public bool IsSuccess {  get; set; }
         public List<ColumnInfo>? Columns { get; set; }
         public int? RowCount {  get; set; }
+        public int? AffectedRows { get; set; }
         public DataTable? Rows { get; set; }
         public int ExecutionTime {  get; set; }
         public String? ErrorMessage { get; set; }

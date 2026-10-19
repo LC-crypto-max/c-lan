@@ -267,6 +267,12 @@ namespace c_lan.Data
                 using var cmd = new MySqlCommand(request.SqlText, conn);
                 cmd.CommandTimeout = request.TimeoutSeconds;
                 using var reader = await cmd.ExecuteReaderAsync(token);
+                if (reader.FieldCount == 0)
+                {
+                    queryresult.IsSuccess = true;
+                    queryresult.AffectedRows = reader.RecordsAffected >= 0 ? reader.RecordsAffected : null;
+                    return queryresult;
+                }
                 int safeMaxRows = Math.Clamp(request.MaxRows, 1, 2000);
                 (DataTable datatable, bool isTruncated) =
                     await BoundedDataTableReader.LoadAsync(reader, safeMaxRows, token);

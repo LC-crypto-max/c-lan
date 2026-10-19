@@ -81,6 +81,8 @@ finally
     File.Delete(renameDatabase);
 }
 
+await QueryCommandChecks.RunAsync();
+
 static void Assert(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
