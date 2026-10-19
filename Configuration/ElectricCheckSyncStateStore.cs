@@ -6,7 +6,10 @@ namespace c_lan.Configuration;
 
 public sealed class ElectricCheckSyncStateStore
 {
-    private readonly string _directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "c-lan");
+    private readonly string _directory;
+
+    public ElectricCheckSyncStateStore(string? directory = null) =>
+        _directory = directory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "c-lan");
 
     public async Task<long> LoadAsync(string key, CancellationToken token)
     {

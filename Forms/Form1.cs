@@ -16,14 +16,21 @@ namespace c_lan
         private CancellationTokenSource? _syncLoopCancellation;
         private Task? _syncLoopTask;
         private bool _allowClose;
+        private readonly Configuration.ElectricCheckSyncSettingsStore _syncSettingsStore = new();
+        private ElectricCheckSyncSettings _savedSyncSettings = new();
+        private bool _syncSettingsLoaded;
+        private readonly System.Windows.Forms.Timer _syncSettingsTimer;
 
         public Form1(IConnectionService connectionService, ISchemaService schemaService, IQueryService queryService, ElectricCheckSyncService syncService)
         {
             InitializeComponent();
+            _syncSettingsTimer = new System.Windows.Forms.Timer(components!) { Interval = 600 };
+            _syncSettingsTimer.Tick += (_, _) => { _syncSettingsTimer.Stop(); SaveSyncSettings(); };
             _connectionService = connectionService;
             _schemaService = schemaService;
             _queryService = queryService;
             _syncService = syncService;
+            InitializeScanUi();
             InitializeStartupUi();
 
             // 这些事件属于业务接线，放在 Form 代码中比手工修改 Designer 更容易阅读。
@@ -48,6 +55,8 @@ namespace c_lan
             _syncNowButton.Click += SyncNowButton_Click;
             _autoSyncCheckBox.CheckedChanged += (_, _) =>
             {
+                if (!_syncSettingsLoaded) return;
+                SaveSyncSettings();
                 if (_autoSyncCheckBox.Checked) StartSyncLoop();
                 else StopSyncLoop();
             };
@@ -58,6 +67,9 @@ namespace c_lan
             ExitMenuItem.Click += (_, _) => { _allowClose = true; Close(); };
             InitializeDatabaseObjectBrowser();
             InitializeDatabaseTypeUi();
+            _syncDeviceTextBox.TextChanged += SyncSettingsChanged;
+            _syncServerTextBox.TextChanged += SyncSettingsChanged;
+            _sqliteFileComboBox.SelectedIndexChanged += SyncSettingsChanged;
         }
 
         private async void ExecuteQueryButton_Click(object? sender, EventArgs e)
@@ -172,6 +184,55 @@ namespace c_lan
             {
                 MessageBox.Show(ex.Message,"读取连接配置失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
             }
+            try
+            {
+                ElectricCheckSyncSettings? settings = _syncSettingsStore.Load();
+                if (settings is not null)
+                {
+                    _savedSyncSettings = settings;
+                    _syncDeviceTextBox.Text = settings.DeviceNo;
+                    _syncServerTextBox.Text = settings.ServerBaseUrl;
+                    if (!string.IsNullOrWhiteSpace(settings.SqliteFilePath))
+                    {
+                        _databaseTypeComboBox.SelectedIndex = 1;
+                        HostText.Text = Path.GetDirectoryName(settings.SqliteFilePath) ?? "";
+                        RefreshSqliteFiles(false);
+                        if (!_sqliteFileComboBox.Items.Contains(settings.SqliteFilePath))
+                            _sqliteFileComboBox.Items.Add(settings.SqliteFilePath);
+                        _sqliteFileComboBox.SelectedItem = settings.SqliteFilePath;
+                    }
+                    _autoSyncCheckBox.Checked = settings.Enabled;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("读取同步配置失败，请重新填写：" + ex.Message, "同步配置", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            _syncSettingsLoaded = true;
+            if (_autoSyncCheckBox.Checked) StartSyncLoop();
+            _scanTimer.Start();
+            await BeginScanOperationAsync();
+        }
+
+        private void SyncSettingsChanged(object? sender, EventArgs e)
+        {
+            if (!_syncSettingsLoaded) return;
+            _syncSettingsTimer.Stop();
+            _syncSettingsTimer.Start();
+        }
+
+        private void SaveSyncSettings()
+        {
+            if (!_syncSettingsLoaded) return;
+            try
+            {
+                _savedSyncSettings = BuildSyncSettings();
+                _syncSettingsStore.Save(_savedSyncSettings);
+            }
+            catch (Exception ex)
+            {
+                _syncStatusLabel.Text = "保存同步配置失败：" + ex.Message;
+            }
         }
 
         private ElectricCheckSyncSettings BuildSyncSettings()
@@ -181,8 +242,11 @@ namespace c_lan
             {
                 Enabled = _autoSyncCheckBox.Checked,
                 DeviceNo = _syncDeviceTextBox.Text.Trim(),
-                SqliteFilePath = profile.DatabaseFilePath,
-                ServerBaseUrl = _syncServerTextBox.Text.Trim()
+                SqliteFilePath = string.IsNullOrEmpty(profile.DatabaseFilePath) ? _savedSyncSettings.SqliteFilePath : profile.DatabaseFilePath,
+                ServerBaseUrl = _syncServerTextBox.Text.Trim(),
+                TableName = _savedSyncSettings.TableName,
+                PollIntervalSeconds = _savedSyncSettings.PollIntervalSeconds,
+                BatchSize = _savedSyncSettings.BatchSize
             };
         }
 
@@ -220,6 +284,7 @@ namespace c_lan
                 _fullSyncButton.Enabled = false;
                 _syncStatusLabel.Text = "同步中...";
                 ElectricCheckSyncSettings settings = BuildSyncSettings();
+                SaveSyncSettings();
                 if (resetCursor) await _syncService.ResetSyncStateAsync(settings, CancellationToken.None);
                 ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(settings, CancellationToken.None);
                 ShowSyncResult(result);
@@ -249,8 +314,12 @@ namespace c_lan
             }
         }
 
-        private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
+        private bool _exitInProgress;
+
+        private async void Form1_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            _syncSettingsTimer.Stop();
+            SaveSyncSettings();
             if (!_allowClose)
             {
                 e.Cancel = true;
@@ -258,10 +327,22 @@ namespace c_lan
                 _notifyIcon.ShowBalloonTip(1500, "电检同步", "程序已最小化到系统托盘，仍会继续同步。", ToolTipIcon.Info);
                 return;
             }
+            e.Cancel = true;
+            if (_exitInProgress) return;
+            _exitInProgress = true;
+            _scanTimer.Stop();
+            _scanCancellation.Cancel();
             _syncLoopCancellation?.Cancel();
+            try { await Task.WhenAll(_scanWork, _syncLoopTask ?? Task.CompletedTask); }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { Debug.WriteLine("退出时后台任务结束：" + ex.Message); }
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
+            _scanService.Dispose();
+            _scanCancellation.Dispose();
             _syncService.Dispose();
+            FormClosing -= Form1_FormClosing;
+            Close();
         }
 
         private void ShowFromTray()

@@ -8,6 +8,36 @@ using c_lan.Data;
 
 int evaluatedRows = 0;
 
+string settingsDirectory = Path.Combine(Path.GetTempPath(), $"c-lan-settings-{Guid.NewGuid():N}");
+try
+{
+    ElectricCheckSyncSettingsStore settingsStore = new(settingsDirectory);
+    Assert(settingsStore.Load() is null, "missing settings must use defaults");
+    ElectricCheckSyncSettings saved = new() { Enabled = true, DeviceNo = "设备01", SqliteFilePath = @"C:\数据\test.db", ServerBaseUrl = "http://localhost:8080", PollIntervalSeconds = 7, BatchSize = 42 };
+    settingsStore.Save(saved);
+    ElectricCheckSyncSettings restored = new ElectricCheckSyncSettingsStore(settingsDirectory).Load()!;
+    Assert(JsonSerializer.Serialize(saved) == JsonSerializer.Serialize(restored), "all sync settings must survive restart");
+    saved.Enabled = false;
+    settingsStore.Save(saved);
+    Assert(settingsStore.Load()?.Enabled == false, "updates must replace previous settings");
+    string pendingPath = Path.Combine(settingsDirectory, "electric-check-settings.json.tmp");
+    Directory.CreateDirectory(pendingPath);
+    bool saveRejected = false;
+    try { settingsStore.Save(new() { DeviceNo = "must not replace saved settings" }); }
+    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { saveRejected = true; }
+    Assert(saveRejected && settingsStore.Load()?.DeviceNo == saved.DeviceNo, "failed save must preserve previous settings");
+    Directory.Delete(pendingPath);
+    File.WriteAllText(Path.Combine(settingsDirectory, "electric-check-settings.json"), "broken json");
+    bool rejected = false;
+    try { settingsStore.Load(); } catch (JsonException) { rejected = true; }
+    Assert(rejected, "corrupt configuration must be reported");
+    Console.WriteLine("Sync settings persistence checks passed.");
+}
+finally
+{
+    if (Directory.Exists(settingsDirectory)) Directory.Delete(settingsDirectory, true);
+}
+
 using SqliteConnection connection = new("Data Source=:memory:");
 await connection.OpenAsync();
 connection.CreateFunction("count_row", (long value) =>
@@ -83,6 +113,7 @@ finally
 
 WindowsStartupChecks.Run();
 await QueryCommandChecks.RunAsync();
+await ElectricCheckScanChecks.RunAsync();
 
 static void Assert(bool condition, string message)
 {
