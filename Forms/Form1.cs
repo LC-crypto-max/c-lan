@@ -24,6 +24,7 @@ namespace c_lan
             _schemaService = schemaService;
             _queryService = queryService;
             _syncService = syncService;
+            InitializeStartupUi();
 
             // 这些事件属于业务接线，放在 Form 代码中比手工修改 Designer 更容易阅读。
             Shown += Form1_Shown;
@@ -154,6 +155,7 @@ namespace c_lan
 
         private async void Form1_Shown(object? sender, EventArgs e)
         {
+            LoadStartupSetting();
             try
             {
                 List<ConnectionProfile> profiles = await _connectionService.ReadAllConfigurationsAsync(CancellationToken.None);

@@ -81,6 +81,7 @@ finally
     File.Delete(renameDatabase);
 }
 
+WindowsStartupChecks.Run();
 await QueryCommandChecks.RunAsync();
 
 static void Assert(bool condition, string message)

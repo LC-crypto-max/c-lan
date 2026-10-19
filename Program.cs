@@ -13,6 +13,8 @@ namespace c_lan
         [STAThread]
         static void Main()
         {
+            using Mutex instance = new(true, "Local\\c-lan-electric-check", out bool firstInstance);
+            if (!firstInstance) return;
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             //进行组装,职责拆分

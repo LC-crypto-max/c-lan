@@ -39,7 +39,7 @@ internal static class Preview
                 Layout(form);
                 using var bitmap = new Bitmap(form.Width, form.Height);
                 form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
-                foreach (var field in new[]{"ExecuteQueryButton", "StopQueryButton", "ClearSqlButton", "ReadOnlyCheckBox", "_syncNowButton", "_fullSyncButton", "_databaseTypeComboBox", "ShowPasswordCheckBox", "PasswordText"})
+                foreach (var field in new[]{"ExecuteQueryButton", "StopQueryButton", "ClearSqlButton", "ReadOnlyCheckBox", "_syncNowButton", "_fullSyncButton", "_startupCheckBox", "_databaseTypeComboBox", "ShowPasswordCheckBox", "PasswordText"})
                 {
                     Control control = Get<Control>(form, field);
                     if (!control.Visible) continue;
@@ -50,6 +50,7 @@ internal static class Preview
                             throw new Exception($"Overlapping {field} and {sibling.Name}");
                 }
                 if (form.Icon is null || Get<NotifyIcon>(form,"_notifyIcon").Icon is null) throw new Exception("Missing application icon");
+                if (!Get<CheckBox>(form, "_startupCheckBox").Checked) throw new Exception("Startup must default to enabled");
                 var file = Path.Combine(AppContext.BaseDirectory, $"preview-{size.Width}-{mode}.png");
                 bitmap.Save(file);
                 Console.WriteLine(file);
