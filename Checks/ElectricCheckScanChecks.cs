@@ -11,6 +11,8 @@ internal static class ElectricCheckScanChecks
 {
     public static async Task RunAsync()
     {
+        await CheckEntryCorrectionAsync();
+        ElectricCheckScanUiChecks.Run();
         using Fixture f = new();
         ElectricCheckScanState entered = await f.Scans.StartAsync(f.Settings, " SN-A ", CancellationToken.None);
         Check(entered.Status == "TESTING" && entered.SnCode == "SN-A", "scan must enter with configured device and trimmed SN");
@@ -128,12 +130,81 @@ internal static class ElectricCheckScanChecks
         Console.WriteLine("Electric check scan and one-minute completion checks passed.");
     }
 
+    private static async Task CheckEntryCorrectionAsync()
+    {
+        using Fixture rejected = new();
+        rejected.Server.FailEntry = true;
+        await RejectAsync(() => rejected.Scans.StartAsync(rejected.Settings, "SN-WRONG", CancellationToken.None));
+        string originalId = rejected.Scans.Current!.ScanId;
+        string originalTime = rejected.Scans.Current.ScanTime;
+        rejected.Clock.Advance(60);
+        await rejected.Scans.PollAsync(rejected.Settings, CancellationToken.None);
+        Check(rejected.Server.EntryBodies.Count == 1 && rejected.Scans.Current.Status == "PENDING_ENTRY",
+            "failed entry must pause automatic POST retries while SN is editable");
+        rejected.Server.FailEntry = false;
+        rejected.AddRow(2, "new result");
+        ElectricCheckScanState corrected = await rejected.Scans.StartAsync(rejected.Settings, " SN-CORRECT ", CancellationToken.None);
+        Check(corrected.Status == "TESTING" && corrected.SnCode == "SN-CORRECT",
+            "an uncommitted entry must allow a corrected SN");
+        Check(corrected.ScanId == originalId && corrected.ScanTime == originalTime && corrected.SourceRowIdBeforeScan == 1,
+            "correcting the same scan must retain its id and result boundary to avoid duplicate entries or lost results");
+
+        using Fixture restarted = new();
+        restarted.Server.FailEntry = true;
+        await RejectAsync(() => restarted.Scans.StartAsync(restarted.Settings, "SN-A", CancellationToken.None));
+        string originalBody = restarted.Server.EntryBodies.Single();
+        restarted.Restart();
+        await restarted.Scans.PollAsync(restarted.Settings, CancellationToken.None);
+        Check(restarted.Server.EntryBodies.Count == 1 && restarted.Scans.Current?.SnCode == "SN-A",
+            "restarting after a failed entry must preserve SN and keep automatic entry retries paused");
+        restarted.Server.FailEntry = false;
+        await restarted.Scans.StartAsync(restarted.Settings, "SN-A", CancellationToken.None);
+        Check(restarted.Server.EntryBodies[1] == originalBody, "manual retry without editing must reuse the persisted entry payload");
+
+        using Fixture lost = new();
+        lost.Server.LoseEntryResponse = true;
+        await RejectAsync(() => lost.Scans.StartAsync(lost.Settings, "SN-ORIGINAL", CancellationToken.None));
+        lost.Restart();
+        ElectricCheckScanState recovered = await lost.Scans.StartAsync(lost.Settings, "SN-EDITED", CancellationToken.None);
+        Check(recovered.Status == "TESTING" && recovered.SnCode == "SN-ORIGINAL" && lost.Server.EntryBodies.Count == 1,
+            "an entry committed before losing its response must recover the server SN instead of submitting the edit");
+
+        using Fixture offline = new();
+        offline.Server.FailEntry = true;
+        await RejectAsync(() => offline.Scans.StartAsync(offline.Settings, "SN-A", CancellationToken.None));
+        offline.Server.FailLookup = true;
+        await RejectAsync(() => offline.Scans.StartAsync(offline.Settings, "SN-B", CancellationToken.None));
+        Check(offline.Scans.Current?.SnCode == "SN-A" && offline.Server.EntryBodies.Count == 1,
+            "failed server verification must preserve the old SN and must not submit a replacement");
+
+        using Fixture delayed = new();
+        delayed.Server.DelayEntryCommit = true;
+        await RejectAsync(() => delayed.Scans.StartAsync(delayed.Settings, "SN-ORIGINAL", CancellationToken.None));
+        await RejectAsync(() => delayed.Scans.StartAsync(delayed.Settings, "SN-EDITED", CancellationToken.None));
+        await delayed.Scans.PollAsync(delayed.Settings, CancellationToken.None);
+        Check(delayed.Scans.Current?.Status == "TESTING" && delayed.Scans.Current.SnCode == "SN-ORIGINAL",
+            "an old request committing after verification must win the same scanId and recover its actual SN");
+
+        using Fixture correctedLost = new();
+        correctedLost.Server.FailEntry = true;
+        await RejectAsync(() => correctedLost.Scans.StartAsync(correctedLost.Settings, "SN-WRONG", CancellationToken.None));
+        correctedLost.Server.FailEntry = false;
+        correctedLost.Server.LoseEntryResponse = true;
+        await RejectAsync(() => correctedLost.Scans.StartAsync(correctedLost.Settings, "SN-CORRECT", CancellationToken.None));
+        correctedLost.Restart();
+        await correctedLost.Scans.PollAsync(correctedLost.Settings, CancellationToken.None);
+        Check(correctedLost.Scans.Current?.Status == "TESTING" && correctedLost.Scans.Current.SnCode == "SN-CORRECT"
+            && correctedLost.Server.EntryBodies.Count == 2,
+            "a corrected entry with a lost response must recover after restart without sending another entry");
+        Console.WriteLine("Failed entry SN correction and recovery checks passed.");
+    }
+
     private static void Check(bool value, string message)
     {
         if (!value) throw new InvalidOperationException(message);
     }
 
-    private static async Task RejectAsync(Func<Task<ElectricCheckScanState?>> action)
+    private static async Task RejectAsync(Func<Task> action)
     {
         try { await action(); }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException) { return; }
@@ -218,10 +289,16 @@ internal static class ElectricCheckScanChecks
         public bool FailUploadBusiness;
         public bool FailComplete;
         public bool LoseCompleteResponse;
+        public bool FailEntry;
+        public bool FailLookup;
+        public bool LoseEntryResponse;
+        public bool DelayEntryCommit;
+        private string? _delayedEntryBody;
         public Action? OnUpload;
         public readonly HashSet<long> UploadedRows = [];
         public readonly Dictionary<long, string?> UploadedValues = [];
         public readonly List<string> CompleteBodies = [];
+        public readonly List<string> EntryBodies = [];
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             string path = request.RequestUri!.AbsolutePath;
@@ -257,14 +334,42 @@ internal static class ElectricCheckScanChecks
             }
             if (request.Method == HttpMethod.Post && path.EndsWith("/scans"))
             {
-                _scan = data.Clone(); _status = "TESTING";
-                LastBaseline = data.GetProperty("sourceRowIdBeforeScan").GetInt64();
-                DeviceNo = data.GetProperty("deviceNo").GetString();
+                EntryBodies.Add(body);
+                if (FailEntry) return Reply(new { code = 500 }, HttpStatusCode.InternalServerError);
+                if (DelayEntryCommit)
+                {
+                    DelayEntryCommit = false; _delayedEntryBody = body;
+                    throw new HttpRequestException("entry timed out before its transaction committed");
+                }
+                if (_delayedEntryBody is not null)
+                {
+                    using JsonDocument delayed = JsonDocument.Parse(_delayedEntryBody);
+                    StoreEntry(delayed.RootElement); _delayedEntryBody = null;
+                }
+                if (_scan is not null && (_scan.Value.GetProperty("scanId").GetString() != data.GetProperty("scanId").GetString()
+                        || _scan.Value.GetProperty("snCode").GetString() != data.GetProperty("snCode").GetString()))
+                    return Reply(new { code = 409, msg = "scan identity cannot be overwritten" }, HttpStatusCode.Conflict);
+                if (_scan is null) StoreEntry(data);
+                if (LoseEntryResponse)
+                {
+                    LoseEntryResponse = false;
+                    throw new HttpRequestException("entry committed but response was lost");
+                }
                 return ScanReply();
             }
             if (request.Method == HttpMethod.Get)
-                return _scan is null || (path.EndsWith("/current") && _status != "TESTING") ? Reply(new { code = 200 }) : ScanReply();
+            {
+                if (FailLookup) return Reply(new { code = 500 }, HttpStatusCode.InternalServerError);
+                if (path.EndsWith("/current")) return _scan is null || _status != "TESTING" ? Reply(new { code = 200 }) : ScanReply();
+                return _scan is null ? Reply(new { code = 404 }, HttpStatusCode.NotFound) : ScanReply();
+            }
             throw new InvalidOperationException("Unexpected request: " + request.RequestUri);
+        }
+        private void StoreEntry(JsonElement data)
+        {
+            _scan = data.Clone(); _status = "TESTING";
+            LastBaseline = data.GetProperty("sourceRowIdBeforeScan").GetInt64();
+            DeviceNo = data.GetProperty("deviceNo").GetString();
         }
         private HttpResponseMessage ScanReply()
         {

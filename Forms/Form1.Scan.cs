@@ -15,6 +15,7 @@ public partial class Form1
     private Button _scanSubmit = null!;
     private Label _scanDeviceInfo = null!;
     private Label _scanStateInfo = null!;
+    private string? _editableScanId;
 
     private void InitializeScanUi()
     {
@@ -36,7 +37,7 @@ public partial class Form1
         Label hint = new()
         {
             AutoSize = true, MaximumSize = new Size(750, 0),
-            Text = "扫码枪请设置为回车结束。每分钟检查一次：已有检测结果且稳定满一分钟，上传成功后自动出站。无结果或通信失败时继续等待。"
+            Text = "扫码枪请设置为回车结束。入站失败后可修改SN并点击“重新入站”；入站成功前请勿检测。已有结果且稳定满一分钟，上传成功后自动出站。"
         };
         layout.Controls.Add(_scanDeviceInfo, 0, 0); layout.Controls.Add(input, 0, 1);
         layout.Controls.Add(_scanStateInfo, 0, 2); layout.Controls.Add(hint, 0, 3);
@@ -51,7 +52,8 @@ public partial class Form1
             e.SuppressKeyPress = true;
             await BeginScanOperationAsync(_scanInput.Text);
         };
-        retry.Click += async (_, _) => await BeginScanOperationAsync();
+        retry.Click += async (_, _) => await BeginScanOperationAsync(
+            _scanService.Current?.Status == "PENDING_ENTRY" ? _scanInput.Text : null);
         _scanTimer = new System.Windows.Forms.Timer(components!) { Interval = (int)ElectricCheckScanService.CheckInterval.TotalMilliseconds };
         _scanTimer.Tick += async (_, _) => await BeginScanOperationAsync();
         RefreshScanUi();
@@ -98,16 +100,31 @@ public partial class Form1
 
     private void RefreshScanUi(string? error = null)
     {
+        ElectricCheckScanState? state = _scanService.Current;
+        bool pendingEntry = state?.Status == "PENDING_ENTRY";
         bool locked = _scanOperation || _scanService.HasActiveScan;
-        _scanInput.Enabled = !locked; _scanSubmit.Enabled = !locked;
+        _scanInput.Enabled = !_scanOperation && (!_scanService.HasActiveScan || pendingEntry);
+        _scanSubmit.Enabled = _scanInput.Enabled;
+        _scanSubmit.Text = pendingEntry ? "重新入站" : "扫码入站";
+        if (pendingEntry && _editableScanId != state!.ScanId)
+        {
+            _scanInput.Text = state.SnCode;
+            _scanInput.SelectAll();
+            _editableScanId = state.ScanId;
+        }
+        else if (!pendingEntry && _editableScanId is not null)
+        {
+            _scanInput.Clear();
+            _editableScanId = null;
+        }
         _syncDeviceTextBox.Enabled = !locked; _syncServerTextBox.Enabled = !locked;
         _databaseTypeComboBox.Enabled = !locked; _sqliteFileComboBox.Enabled = !locked;
         _browseSqliteButton.Enabled = !locked; HostText.Enabled = !locked;
         _scanDeviceInfo.Text = "当前设备：" + _syncDeviceTextBox.Text;
-        ElectricCheckScanState? state = _scanService.Current;
         string status = state?.Status switch
         {
-            "PENDING_ENTRY" => "入站提交中", "TESTING" => "检测中", "PENDING_COMPLETE" => "自动出站重试中",
+            "PENDING_ENTRY" => _scanOperation ? "正在核对 / 提交入站" : "入站未确认（可修改SN）",
+            "TESTING" => "检测中", "PENDING_COMPLETE" => "自动出站重试中",
             "COMPLETED" => "已出站", "CANCELLED" => "已取消", _ => "等待扫码"
         };
         _scanStateInfo.Text = $"当前 SN：{state?.SnCode ?? "—"}\r\n状态：{status}    检测项目：{state?.ObservedRecordCount ?? 0}\r\n\r\n"

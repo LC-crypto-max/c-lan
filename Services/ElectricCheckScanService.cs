@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -43,7 +44,11 @@ public sealed class ElectricCheckScanService : IDisposable
         try
         {
             await LoadAsync(settings, token);
-            if (HasActiveScan) throw new InvalidOperationException("上一件尚未出站，请等待检测完成或核实当前记录。");
+            if (Current?.Status == "PENDING_ENTRY")
+            {
+                if (await RecoverPendingEntryAsync(settings, token)) return Current!;
+            }
+            else if (HasActiveScan) throw new InvalidOperationException("上一件尚未出站，请等待检测完成或核实当前记录。");
             ElectricCheckScanState? remote = await GetAsync(settings, "scans/current?deviceNo=" + Uri.EscapeDataString(settings.DeviceNo), token);
             if (remote is not null)
             {
@@ -52,13 +57,22 @@ public sealed class ElectricCheckScanService : IDisposable
                 await SaveAsync(settings, token);
                 throw new InvalidOperationException(Current.Message);
             }
-            long baseline = await ReadMaxRowAsync(settings, token);
-            Current = new()
+            if (Current?.Status == "PENDING_ENTRY")
             {
-                ScanId = Guid.NewGuid().ToString("N"), DeviceNo = settings.DeviceNo, SnCode = sn,
-                ScanTime = LocalTime(), SourceRowIdBeforeScan = baseline,
-                Status = "PENDING_ENTRY", Message = "正在提交入站，成功前请勿开始检测。"
-            };
+                // 沿用同一次扫码，服务端唯一键可阻止超时旧请求与改码请求各自生成一条入站。
+                Current.SnCode = sn;
+                Current.Message = "正在重新提交入站，成功前请勿开始检测。";
+            }
+            else
+            {
+                long baseline = await ReadMaxRowAsync(settings, token);
+                Current = new()
+                {
+                    ScanId = Guid.NewGuid().ToString("N"), DeviceNo = settings.DeviceNo, SnCode = sn,
+                    ScanTime = LocalTime(), SourceRowIdBeforeScan = baseline,
+                    Status = "PENDING_ENTRY", Message = "正在提交入站，成功前请勿开始检测。"
+                };
+            }
             await SaveAsync(settings, token);
             await EnterAsync(settings, token);
             return Current;
@@ -80,7 +94,15 @@ public sealed class ElectricCheckScanService : IDisposable
                 await SaveAsync(settings, token);
             }
             if (!HasActiveScan) return Current;
-            if (Current.Status == "PENDING_ENTRY") await EnterAsync(settings, token);
+            if (Current.Status == "PENDING_ENTRY")
+            {
+                if (!await RecoverPendingEntryAsync(settings, token))
+                {
+                    Current.Message = "入站尚未成功，自动重试已暂停。可修改SN后点击“重新入站”，也可保留原SN重试。";
+                    await SaveAsync(settings, token);
+                }
+                return Current;
+            }
 
             ElectricCheckScanState remote = await GetAsync(settings, "scans/" + Uri.EscapeDataString(Current.ScanId)
                 + "?deviceNo=" + Uri.EscapeDataString(settings.DeviceNo), token)
@@ -159,16 +181,46 @@ public sealed class ElectricCheckScanService : IDisposable
     private async Task EnterAsync(ElectricCheckSyncSettings settings, CancellationToken token)
     {
         ElectricCheckScanState state = Current!;
-        ElectricCheckScanState remote = await PostAsync(settings, "scans", new
+        try
         {
-            state.ScanId, state.DeviceNo, state.SnCode, state.ScanTime, state.SourceRowIdBeforeScan
-        }, token);
-        VerifyIdentity(remote);
-        state.Status = remote.Status;
-        state.Message = remote.Status == "TESTING" ? "已入站，等待检测结果；每分钟检查一次。" : "服务器已确认该记录的最终状态。";
-        if (state.Status is not ("TESTING" or "COMPLETED" or "CANCELLED"))
-            throw new InvalidOperationException("服务器未确认有效入站状态。");
+            ElectricCheckScanState remote = await PostAsync(settings, "scans", new
+            {
+                state.ScanId, state.DeviceNo, state.SnCode, state.ScanTime, state.SourceRowIdBeforeScan
+            }, token);
+            VerifyIdentity(remote);
+            if (remote.Status is not ("TESTING" or "COMPLETED" or "CANCELLED"))
+                throw new InvalidOperationException("服务器未确认有效入站状态。");
+            state.Status = remote.Status;
+            state.Message = remote.Status == "TESTING" ? "已入站，等待检测结果；每分钟检查一次。" : "服务器已确认该记录的最终状态。";
+            await SaveAsync(settings, token);
+        }
+        catch (Exception ex) when (state.Status == "PENDING_ENTRY")
+        {
+            state.Message = "入站未确认成功，自动重试已暂停。可修改SN后点击“重新入站”。原因：" + ex.Message;
+            await SaveAsync(settings, CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task<bool> RecoverPendingEntryAsync(ElectricCheckSyncSettings settings, CancellationToken token)
+    {
+        ElectricCheckScanState state = Current!;
+        ElectricCheckScanState? remote = await GetAsync(settings,
+            "scans/" + Uri.EscapeDataString(state.ScanId) + "?deviceNo=" + Uri.EscapeDataString(state.DeviceNo),
+            token, allowNotFound: true);
+        if (remote is null) return false;
+        if (remote.ScanId != state.ScanId || remote.DeviceNo != state.DeviceNo
+                || remote.SourceRowIdBeforeScan != state.SourceRowIdBeforeScan || string.IsNullOrWhiteSpace(remote.SnCode)
+                || remote.Status is not ("TESTING" or "COMPLETED" or "CANCELLED"))
+            throw new InvalidOperationException("服务器记录与本次扫码不一致，不能修改SN，请核实。");
+
+        // 超时旧请求可能先于改码请求提交；恢复服务端实际保存的SN，不覆盖入站事实。
+        Current = remote;
+        Current.Message = remote.SnCode == state.SnCode
+            ? "已恢复服务器确认的原扫码记录。该记录已入站，不能修改SN。"
+            : "服务器已确认的SN为“" + remote.SnCode + "”，已恢复该记录，本次SN修改未生效。";
         await SaveAsync(settings, token);
+        return true;
     }
 
     private void Observe(Snapshot snapshot)
@@ -198,9 +250,11 @@ public sealed class ElectricCheckScanService : IDisposable
     private Uri Endpoint(ElectricCheckSyncSettings settings, string suffix) => new(
         new Uri(settings.ServerBaseUrl.TrimEnd('/') + "/"), "openapi/electric-check/" + suffix);
 
-    private async Task<ElectricCheckScanState?> GetAsync(ElectricCheckSyncSettings settings, string suffix, CancellationToken token)
+    private async Task<ElectricCheckScanState?> GetAsync(ElectricCheckSyncSettings settings, string suffix, CancellationToken token,
+        bool allowNotFound = false)
     {
         using HttpResponseMessage response = await _http.GetAsync(Endpoint(settings, suffix), token);
+        if (allowNotFound && response.StatusCode == HttpStatusCode.NotFound) return null;
         return await ReadResponseAsync(response, token);
     }
 
