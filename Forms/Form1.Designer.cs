@@ -8,6 +8,7 @@
         {
             if (disposing && (components != null))
             {
+                DisposeCollectorResources();
                 components.Dispose();
             }
             base.Dispose(disposing);

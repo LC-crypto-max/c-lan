@@ -1,4 +1,4 @@
-using c_lan.Utilities;
+﻿using c_lan.Utilities;
 using c_lan.Configuration;
 using c_lan.Models;
 using c_lan.Services;
@@ -113,6 +113,9 @@ finally
 
 WindowsStartupChecks.Run();
 await QueryCommandChecks.RunAsync();
+ElectricCheckScanUiChecks.Run();
+await CollectorUploadChecks.RunAsync();
+// Archived FIFO regression is explicitly isolated from the application runtime.
 await ElectricCheckScanChecks.RunAsync();
 
 static void Assert(bool condition, string message)

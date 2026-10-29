@@ -30,7 +30,8 @@ namespace c_lan
             _schemaService = schemaService;
             _queryService = queryService;
             _syncService = syncService;
-            InitializeScanUi();
+            // InitializeScanUi(); // SN/FIFO business is inactive in collector mode.
+            InitializeCollectorUi();
             InitializeStartupUi();
 
             // 这些事件属于业务接线，放在 Form 代码中比手工修改 Designer 更容易阅读。
@@ -56,6 +57,13 @@ namespace c_lan
             _autoSyncCheckBox.CheckedChanged += (_, _) =>
             {
                 if (!_syncSettingsLoaded) return;
+                if (!_maintenanceUnlocked)
+                {
+                    _syncSettingsLoaded = false;
+                    _autoSyncCheckBox.Checked = _savedSyncSettings.Enabled;
+                    _syncSettingsLoaded = true;
+                    return;
+                }
                 SaveSyncSettings();
                 if (_autoSyncCheckBox.Checked) StartSyncLoop();
                 else StopSyncLoop();
@@ -64,7 +72,12 @@ namespace c_lan
             _notifyIcon.DoubleClick += (_, _) => ShowFromTray();
             ShowWindowMenuItem.Click += (_, _) => ShowFromTray();
             SyncNowMenuItem.Click += async (_, _) => await SyncNowAsync();
-            ExitMenuItem.Click += (_, _) => { _allowClose = true; Close(); };
+            ExitMenuItem.Click += (_, _) =>
+            {
+                if (!_maintenanceUnlocked) ShowMaintenancePassword();
+                if (!_maintenanceUnlocked) return;
+                _allowClose = true; Close();
+            };
             InitializeDatabaseObjectBrowser();
             InitializeDatabaseTypeUi();
             _syncDeviceTextBox.TextChanged += SyncSettingsChanged;
@@ -74,6 +87,7 @@ namespace c_lan
 
         private async void ExecuteQueryButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             if (_activeConnectionProfile is null)
             {
                 MessageBox.Show("请先连接数据库", "执行查询");
@@ -101,7 +115,7 @@ namespace c_lan
                 {
                     ResultStateLabel.Text = "查询失败";
                     MessageTextBox.Text = result.ErrorMessage ?? "查询失败，未返回具体原因。";
-                    ResultTabControl.SelectedTab = MessageTabPage;
+                    SelectMaintenanceTab(MessageTabPage);
                     return;
                 }
 
@@ -113,26 +127,26 @@ namespace c_lan
                     ResultStateLabel.Text = $"执行成功，{affectedText}{result.ExecutionTime} ms";
                     MessageTextBox.Text = result.AffectedRows.HasValue
                         ? $"SQL 执行成功，影响 {result.AffectedRows.Value} 行。" : "SQL 执行成功。";
-                    ResultTabControl.SelectedTab = MessageTabPage;
+                    SelectMaintenanceTab(MessageTabPage);
                     return;
                 }
                 ResultSummaryLabel.Text = "查询结果";
                 string truncatedText = result.IsTruncated ? "，结果已截断" : String.Empty;
                 ResultStateLabel.Text = $"{result.RowCount ?? 0} 行，{result.ExecutionTime} ms{truncatedText}";
                 MessageTextBox.Text = "查询执行成功。";
-                ResultTabControl.SelectedTab = ResultTabPage;
+                SelectMaintenanceTab(ResultTabPage);
             }
             catch (OperationCanceledException)
             {
                 ResultStateLabel.Text = "查询已取消";
                 MessageTextBox.Text = "用户停止了这次查询。";
-                ResultTabControl.SelectedTab = MessageTabPage;
+                SelectMaintenanceTab(MessageTabPage);
             }
             catch (Exception ex)
             {
                 ResultStateLabel.Text = "查询失败";
                 MessageTextBox.Text = ex.Message;
-                ResultTabControl.SelectedTab = MessageTabPage;
+                SelectMaintenanceTab(MessageTabPage);
             }
             finally
             {
@@ -144,6 +158,7 @@ namespace c_lan
 
         private void StopQueryButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             //停止按钮只发出取消通知，真正的数据库操作由Provider自行结束。
             _cancellationTokenSource?.Cancel();
             ResultStateLabel.Text = "正在停止查询...";
@@ -151,6 +166,7 @@ namespace c_lan
 
         private void ClearSqlButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             SqlEditorTextBox.Clear();
             MessageTextBox.Clear();
             ResultStateLabel.Text = "尚未执行查询";
@@ -182,7 +198,7 @@ namespace c_lan
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message,"读取连接配置失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
+                MessageTextBox.Text = "读取连接配置失败：" + ex.Message;
             }
             try
             {
@@ -210,20 +226,20 @@ namespace c_lan
             }
             _syncSettingsLoaded = true;
             if (_autoSyncCheckBox.Checked) StartSyncLoop();
-            _scanTimer.Start();
-            await BeginScanOperationAsync();
+            // _scanTimer.Start(); await BeginScanOperationAsync(); // Archived SN polling stays disabled.
+            RefreshCollectorUi();
         }
 
         private void SyncSettingsChanged(object? sender, EventArgs e)
         {
-            if (!_syncSettingsLoaded) return;
+            if (!_syncSettingsLoaded || !_maintenanceUnlocked) return;
             _syncSettingsTimer.Stop();
             _syncSettingsTimer.Start();
         }
 
         private void SaveSyncSettings()
         {
-            if (!_syncSettingsLoaded) return;
+            if (!_syncSettingsLoaded || !_maintenanceUnlocked) return;
             try
             {
                 _savedSyncSettings = BuildSyncSettings();
@@ -259,24 +275,39 @@ namespace c_lan
             _syncLoopCancellation = new CancellationTokenSource();
             _syncLoopTask = _syncService.RunAsync(settings, result =>
             {
-                if (!IsDisposed && IsHandleCreated) BeginInvoke(() => ShowSyncResult(result));
+                if (!_collectorDisposed && !IsDisposed && IsHandleCreated)
+                {
+                    try { BeginInvoke(() => { if (!_collectorDisposed) ShowSyncResult(result); }); }
+                    catch (InvalidOperationException) when (_collectorDisposed || IsDisposed) { }
+                }
             }, _syncLoopCancellation.Token);
+            _collectorWork = Task.WhenAll(_collectorWork, _syncLoopTask);
         }
 
         private void StopSyncLoop()
         {
             _syncLoopCancellation?.Cancel();
-            _syncLoopCancellation?.Dispose();
+            CancellationTokenSource? stopped = _syncLoopCancellation;
+            _ = (_syncLoopTask ?? Task.CompletedTask).ContinueWith(_ => stopped?.Dispose(), TaskScheduler.Default);
             _syncLoopCancellation = null;
             _syncLoopTask = null;
             _syncStatusLabel.Text = "自动同步已停止";
+            RefreshCollectorUi();
         }
 
         private async void SyncNowButton_Click(object? sender, EventArgs e) => await SyncNowAsync();
 
         private async void FullSyncButton_Click(object? sender, EventArgs e) => await SyncNowAsync(resetCursor: true);
 
-        private async Task SyncNowAsync(bool resetCursor = false)
+        private Task SyncNowAsync(bool resetCursor = false)
+        {
+            if (!_maintenanceUnlocked || _collectorDisposed) return Task.CompletedTask;
+            Task work = SyncNowCoreAsync(resetCursor);
+            _collectorWork = Task.WhenAll(_collectorWork, work);
+            return work;
+        }
+
+        private async Task SyncNowCoreAsync(bool resetCursor)
         {
             try
             {
@@ -285,16 +316,15 @@ namespace c_lan
                 _syncStatusLabel.Text = "同步中...";
                 ElectricCheckSyncSettings settings = BuildSyncSettings();
                 SaveSyncSettings();
-                if (resetCursor) await _syncService.ResetSyncStateAsync(settings, CancellationToken.None);
-                ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(settings, CancellationToken.None);
+                if (resetCursor) await _syncService.ResetSyncStateAsync(settings, _collectorCancellation.Token);
+                ElectricCheckSyncResult result = await _syncService.SyncOnceAsync(settings, _collectorCancellation.Token);
                 ShowSyncResult(result);
                 _autoSyncCheckBox.Checked = true;
             }
             catch (Exception ex)
             {
-                _syncStatusLabel.Text = "同步失败：" + ex.Message;
-                MessageTextBox.Text = ex.Message;
-                ResultTabControl.SelectedTab = MessageTabPage;
+                ShowSyncResult(new ElectricCheckSyncResult(0, 0, "同步失败：" + ex.Message));
+                SelectMaintenanceTab(MessageTabPage);
             }
             finally
             {
@@ -307,11 +337,14 @@ namespace c_lan
         {
             _syncStatusLabel.Text = result.Message;
             MessageTextBox.Text = result.Message;
-            if (result.Message.StartsWith("服务端返回", StringComparison.Ordinal) ||
-                result.Message.StartsWith("无法连接服务端", StringComparison.Ordinal))
+            if (result.Sent > 0)
             {
-                ResultTabControl.SelectedTab = MessageTabPage;
+                _collectorLastUpload.Text = $"最近上传：{DateTime.Now:yyyy-MM-dd HH:mm:ss}，{result.Sent} 条，游标 {result.LastRowId}";
+                _collectorError.Text = "最近错误：无";
             }
+            else if (result.Message != "没有新数据") _collectorError.Text = "最近错误：" + result.Message;
+            else _collectorError.Text = "最近错误：无";
+            RefreshCollectorUi();
         }
 
         private bool _exitInProgress;
@@ -323,6 +356,7 @@ namespace c_lan
             if (!_allowClose)
             {
                 e.Cancel = true;
+                LeaveMaintenance();
                 Hide();
                 _notifyIcon.ShowBalloonTip(1500, "电检同步", "程序已最小化到系统托盘，仍会继续同步。", ToolTipIcon.Info);
                 return;
@@ -330,23 +364,21 @@ namespace c_lan
             e.Cancel = true;
             if (_exitInProgress) return;
             _exitInProgress = true;
-            _scanTimer.Stop();
-            _scanCancellation.Cancel();
+            LeaveMaintenance();
             _syncLoopCancellation?.Cancel();
-            try { await Task.WhenAll(_scanWork, _syncLoopTask ?? Task.CompletedTask); }
+            _collectorCancellation.Cancel();
+            try { await _collectorWork; }
             catch (OperationCanceledException) { }
             catch (Exception ex) { Debug.WriteLine("退出时后台任务结束：" + ex.Message); }
             _notifyIcon.Visible = false;
-            _notifyIcon.Dispose();
-            _scanService.Dispose();
-            _scanCancellation.Dispose();
-            _syncService.Dispose();
+            DisposeCollectorResources();
             FormClosing -= Form1_FormClosing;
             Close();
         }
 
         private void ShowFromTray()
         {
+            LeaveMaintenance();
             Show();
             WindowState = FormWindowState.Normal;
             Activate();
@@ -354,6 +386,7 @@ namespace c_lan
 
         private async void TestButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             CancellationTokenSource cancellation = CreateNewCancellationToken();
 
             try
@@ -389,6 +422,7 @@ namespace c_lan
         //连接按钮负责加载数据库范围，并为TreeView建立第一层节点
         private async void ConnectButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             CancellationTokenSource cancellation = CreateNewCancellationToken();
 
             try
@@ -415,7 +449,7 @@ namespace c_lan
                 ConnectionStatusLabel.Text = "● 已连接";
                 ConnectionStatusLabel.ForeColor = Color.FromArgb(31, 137, 89);
                 ResultStateLabel.Text = $"已加载 {databases.Count} 个数据库";
-                ResultTabControl.SelectedTab = _databaseObjectsTabPage;
+                SelectMaintenanceTab(_databaseObjectsTabPage);
             }
             catch (OperationCanceledException)
             {
@@ -466,6 +500,7 @@ namespace c_lan
 
         private async void DatabaseTreeView_BeforeExpand(object? sender, TreeViewCancelEventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             TreeNode? treeNode = e.Node;
             if (_activeConnectionProfile is null || treeNode?.Tag is not BrowserNodeInfo nodeInfo || !HasPlaceholderNode(treeNode))
             {
@@ -550,6 +585,7 @@ namespace c_lan
         //双击表或视图后，在已有DataGridView中显示前200行
         private async void DatabaseTreeView_NodeMouseDoubleClick(object? sender, TreeNodeMouseClickEventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             TreeNode? treeNode = e.Node;
             if (_activeConnectionProfile is null || treeNode?.Tag is not BrowserNodeInfo nodeInfo || nodeInfo.NodeType != BrowserNodeType.DatabaseObject)
             {
@@ -574,7 +610,7 @@ namespace c_lan
                 string truncatedText = result.IsTruncated ? "，仅显示前200行" : String.Empty;
                 ResultStateLabel.Text = $"{result.RowCount ?? 0} 行，{result.ExecutionTime} ms{truncatedText}";
                 CurrentDatabaseStatusLabel.Text = $"数据库：{nodeInfo.DatabaseName}";
-                ResultTabControl.SelectedTab = ResultTabPage;
+                SelectMaintenanceTab(ResultTabPage);
             }
             catch (OperationCanceledException)
             {
@@ -606,6 +642,7 @@ namespace c_lan
 
         private async void SaveConnectionButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             CancellationTokenSource cancellation = CreateNewCancellationToken();
 
             try
@@ -636,6 +673,7 @@ namespace c_lan
 
         private async void DeleteConnectionButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             string connectionName = ConnectionnameText.Text.Trim();
             if (string.IsNullOrWhiteSpace(connectionName))
             {
@@ -721,6 +759,7 @@ namespace c_lan
 
         private void BrowseSqliteButton_Click(object? sender, EventArgs e)
         {
+            if (!_maintenanceUnlocked) return;
             SqliteFolderDialog.InitialDirectory = Directory.Exists(HostText.Text) ? HostText.Text : AppContext.BaseDirectory;
             if (SqliteFolderDialog.ShowDialog(this) == DialogResult.OK)
             {

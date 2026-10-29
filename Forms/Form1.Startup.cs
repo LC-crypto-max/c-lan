@@ -1,4 +1,4 @@
-using c_lan.Services;
+﻿using c_lan.Services;
 
 namespace c_lan;
 
@@ -19,6 +19,13 @@ public partial class Form1
         _startupCheckBox.CheckedChanged += (_, _) =>
         {
             if (!_startupSettingsLoaded) return;
+            if (!_maintenanceUnlocked)
+            {
+                _startupSettingsLoaded = false;
+                _startupCheckBox.Checked = _startupService.IsEnabled();
+                _startupSettingsLoaded = true;
+                return;
+            }
             try { _startupService.SetEnabled(_startupCheckBox.Checked, Application.ExecutablePath); }
             catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
             {

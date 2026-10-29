@@ -1,4 +1,4 @@
-using c_lan.Configuration;
+﻿using c_lan.Configuration;
 using c_lan.Models;
 using Microsoft.Data.Sqlite;
 using System.Globalization;
@@ -139,7 +139,8 @@ public sealed class ElectricCheckSyncService : IDisposable
         TemplateItemId = int.TryParse(Optional(reader.GetValue(10)), out int id) ? id : 0,
         TemplateItemName = Optional(reader.GetValue(11)),
         Remark = Optional(reader.GetValue(12)),
-        SnCode = Optional(reader.GetValue(13))
+        // 采集端仅上传原始明细；SN由服务端同事负责绑定，不采用仪器原始SN。
+        SnCode = null
     };
 
     private static string Required(object value) => Optional(value) ?? throw new InvalidDataException("电检记录存在必填字段为空");

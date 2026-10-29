@@ -1,3 +1,5 @@
+// Archived scanner UI wiring. Collector mode must not initialize, enqueue or poll SN business.
+#if false
 using c_lan.Configuration;
 using c_lan.Models;
 using c_lan.Services;
@@ -131,3 +133,5 @@ public partial class Form1
             + (error ?? state?.Message ?? "请扫描产品条码入站。");
     }
 }
+
+#endif

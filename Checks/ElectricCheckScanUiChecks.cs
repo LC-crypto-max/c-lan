@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
 using c_lan;
@@ -11,61 +11,103 @@ internal static class ElectricCheckScanUiChecks
     public static void Run()
     {
         Exception? failure = null;
-        Thread thread = new(() =>
-        {
-            try { CheckControls(); }
-            catch (Exception ex) { failure = ex; }
-        });
+        Thread thread = new(() => { try { CheckControls(); CheckStartupUpload(); } catch (Exception ex) { failure = ex; } });
         thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
+        thread.Start(); thread.Join();
         if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
-        Console.WriteLine("Failed entry SN editing UI checks passed.");
+        Console.WriteLine("Collector dashboard, maintenance gates and disposal checks passed.");
     }
 
     private static void CheckControls()
     {
-        // 不显示窗体，避免触发启动配置、注册表写入和后台同步。
         using ElectricCheckSyncService sync = new(new ElectricCheckSyncStateStore());
         using Form1 form = new(null!, null!, null!, sync);
-        using ElectricCheckScanService scans = Field<ElectricCheckScanService>(form, "_scanService");
-        using CancellationTokenSource cancellation = Field<CancellationTokenSource>(form, "_scanCancellation");
-        TextBox input = Field<TextBox>(form, "_scanInput");
-        Button submit = Field<Button>(form, "_scanSubmit");
+        Check(!Descendants(form).Any(c => c.AccessibleName == "产品SN" || c.Text == "扫码入站"),
+            "collector must have no SN input or entry action");
+        Check(typeof(Form1).GetField("_scanService", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(form) is null,
+            "collector must never initialize the archived SN service");
+        Check(typeof(Form1).GetField("_scanTimer", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(form) is null,
+            "collector must have no scan polling timer");
         TextBox server = Field<TextBox>(form, "_syncServerTextBox");
-        ElectricCheckScanState state = new() { ScanId = "scan-A", SnCode = "SN-ORIGINAL", Status = "PENDING_ENTRY" };
-        typeof(ElectricCheckScanService).GetProperty(nameof(ElectricCheckScanService.Current))!.SetValue(scans, state);
-        Refresh(form);
-        Check(input.Enabled && submit.Enabled && submit.Text == "重新入站" && input.Text == "SN-ORIGINAL",
-            "failed entry must refill SN, unlock editing and expose manual re-entry");
-        Check(!server.Enabled, "editing SN must keep the server configuration locked");
-
-        input.Text = "SN-EDITED";
-        Refresh(form);
-        Check(input.Text == "SN-EDITED", "status refresh must not overwrite an operator's SN edit");
-        typeof(Form1).GetField("_scanOperation", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(form, true);
-        Refresh(form);
-        Check(!input.Enabled && !submit.Enabled && input.Text == "SN-EDITED",
-            "in-flight entry verification must lock controls without losing edited input");
-
-        typeof(Form1).GetField("_scanOperation", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(form, false);
-        state.Status = "TESTING";
-        Refresh(form);
-        Check(!input.Enabled && !submit.Enabled && input.Text == "", "a confirmed entry must clear the draft and lock SN");
-        state.Status = "COMPLETED";
-        Refresh(form);
-        Check(input.Enabled && submit.Enabled && server.Enabled && submit.Text == "扫码入站",
-            "completed scans must allow the next product and restore the normal submit button");
+        TextBox device = Field<TextBox>(form, "_syncDeviceTextBox");
+        server.Text = "http://collector.invalid"; device.Text = "DRAFT-DEVICE";
+        Invoke(form, "RefreshCollectorUi");
+        Check(!server.Enabled && !Field<Panel>(form, "ConnectionPanel").Enabled,
+            "server, device, source and SQL configuration must start locked");
+        Check(!Field<bool>(form, "_maintenanceUnlocked") && !Field<ToolStripMenuItem>(form, "SyncNowMenuItem").Available,
+            "tray retransmission must start locked");
+        Check(!(bool)Invoke(form, "TryUnlockMaintenance", "wrong")!, "wrong maintenance password must fail");
+        Check((bool)Invoke(form, "TryUnlockMaintenance", "lyc3191")! && server.Enabled,
+            "correct password must enable maintenance");
+        Invoke(form, "ShowSyncResult", new ElectricCheckSyncResult(3, 5, "已同步 3 条"));
+        Check(Field<Label>(form, "_collectorLastUpload").Text.Contains("3"), "dashboard must show last successful upload");
+        Invoke(form, "ShowSyncResult", new ElectricCheckSyncResult(0, 0, "服务端暂不可用"));
+        Check(Field<Label>(form, "_collectorError").Text.Contains("服务端暂不可用"), "dashboard must expose upload failures");
+        Invoke(form, "LeaveMaintenance");
+        Check(!server.Enabled && !Field<ToolStripMenuItem>(form, "SyncNowMenuItem").Available,
+            "leaving maintenance must lock settings and tray actions");
+        // Locked handlers must return before touching null services or changing the saved draft.
+        foreach (string method in new[] { "ConnectButton_Click", "TestButton_Click", "SaveConnectionButton_Click", "DeleteConnectionButton_Click", "ExecuteQueryButton_Click" })
+            Invoke(form, method, null, EventArgs.Empty);
+        ((Task)Invoke(form, "SyncNowAsync", true)!).GetAwaiter().GetResult();
+        Check(server.Text == "http://collector.invalid" && device.Text == "DRAFT-DEVICE",
+            "background status and blocked actions must preserve configuration drafts");
+        Invoke(form, "TryUnlockMaintenance", "lyc3191");
+        Invoke(form, "Form1_FormClosing", null, new FormClosingEventArgs(CloseReason.UserClosing, false));
+        Check(!Field<bool>(form, "_maintenanceUnlocked"), "closing to tray must require a fresh password");
+        form.Hide();
+        using Form1 restarted = new(null!, null!, null!, sync);
+        Check(!Field<bool>(restarted, "_maintenanceUnlocked"), "new windows must start locked");
     }
 
-    private static T Field<T>(Form1 form, string name) =>
-        (T)typeof(Form1).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(form)!;
-
-    private static void Refresh(Form1 form) =>
-        typeof(Form1).GetMethod("RefreshScanUi", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(form, [null]);
-
-    private static void Check(bool condition, string message)
+    private static void CheckStartupUpload()
     {
-        if (!condition) throw new InvalidOperationException(message);
+        using CollectorUploadChecks.Fixture fixture = new();
+        string root = @"Software\c-lan-collector-checks-" + Guid.NewGuid().ToString("N");
+        string legacyDraft = Path.Combine(fixture.Directory, "electric-scan-legacy.json");
+        File.WriteAllText(legacyDraft, "untouched historical draft");
+        ElectricCheckSyncSettingsStore settings = new(fixture.Directory);
+        settings.Save(fixture.Settings);
+        fixture.Server.FailNext = true;
+        try
+        {
+            using Form1 form = new(null!, null!, null!, fixture.Sync);
+            SetField(form, "_syncSettingsStore", settings);
+            SetField(form, "_startupService", new WindowsStartupService(root + @"\Run", root + @"\Settings"));
+            form.Show();
+            PumpUntil(() => fixture.Server.Rows.Count == 3, "startup background collector must retry and upload SQLite without SN work");
+            DateTime until = DateTime.UtcNow.AddMilliseconds(1200);
+            while (DateTime.UtcNow < until) { Application.DoEvents(); Thread.Sleep(5); }
+            Check(fixture.Server.Paths.Count >= 3 && fixture.Server.Paths.All(p => p == "/openapi/electric-check/records:batch"),
+                "startup and subsequent polling must only send raw batch uploads");
+            Check(File.ReadAllText(legacyDraft) == "untouched historical draft", "startup must not migrate or consume historical SN drafts");
+            Check(!Field<bool>(form, "_maintenanceUnlocked"), "background collection must keep maintenance locked");
+            Field<CheckBox>(form, "_autoSyncCheckBox").Checked = false;
+            Check(Field<CheckBox>(form, "_autoSyncCheckBox").Checked && settings.Load()!.Enabled,
+                "locked auto-sync toggle must not stop collection or modify settings");
+            Field<CheckBox>(form, "_startupCheckBox").Checked = false;
+            Check(Field<CheckBox>(form, "_startupCheckBox").Checked,
+                "locked startup toggle must not change the saved startup preference");
+            Invoke(form, "TryUnlockMaintenance", "lyc3191");
+            Invoke(form, "ShowFromTray");
+            Check(!Field<bool>(form, "_maintenanceUnlocked"), "restoring the tray window must lock maintenance again");
+            SetField(form, "_allowClose", true);
+            form.Close();
+            PumpUntil(() => form.IsDisposed, "collector shutdown must finish without any scan timer/service");
+        }
+        finally { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(root, false); }
     }
+
+    private static void PumpUntil(Func<bool> condition, string message)
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(8);
+        while (!condition() && DateTime.UtcNow < deadline) { Application.DoEvents(); Thread.Sleep(5); }
+        Check(condition(), message);
+    }
+    private static void SetField(Form1 form, string name, object value) => typeof(Form1).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(form, value);
+
+    private static IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>().SelectMany(c => new[] { c }.Concat(Descendants(c)));
+    private static T Field<T>(Form1 form, string name) => (T)typeof(Form1).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(form)!;
+    private static object? Invoke(Form1 form, string name, params object?[] args) => typeof(Form1).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(form, args);
+    private static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
 }
