@@ -8,6 +8,7 @@ namespace c_lan.Configuration;
 public sealed class ElectricCheckScanStateStore
 {
     private readonly string _directory;
+    internal string DirectoryPath => _directory;
 
     public ElectricCheckScanStateStore(string? directory = null) =>
         _directory = directory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "c-lan");

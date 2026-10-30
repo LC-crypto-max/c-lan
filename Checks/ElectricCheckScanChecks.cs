@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -11,203 +11,275 @@ internal static class ElectricCheckScanChecks
 {
     public static async Task RunAsync()
     {
-        await CheckEntryCorrectionAsync();
-        ElectricCheckScanUiChecks.Run();
-        using Fixture f = new();
-        ElectricCheckScanState entered = await f.Scans.StartAsync(f.Settings, " SN-A ", CancellationToken.None);
-        Check(entered.Status == "TESTING" && entered.SnCode == "SN-A", "scan must enter with configured device and trimmed SN");
-        Check(f.Server.LastBaseline == 1 && f.Server.DeviceNo == "EC-1", "scan must snapshot source MAX(rowid), not the old sync cursor");
-        bool refused = false;
-        try { await f.Scans.StartAsync(f.Settings, "SN-B", CancellationToken.None); }
-        catch (InvalidOperationException) { refused = true; }
-        Check(refused, "another product cannot enter while the first is active");
-
-        f.Clock.Advance(60);
-        await f.Scans.PollAsync(f.Settings, CancellationToken.None);
-        Check(f.Server.CompleteCalls == 0, "no results must never mean completed");
-        f.AddRow(2, "10");
-        f.Clock.Advance(60);
-        await f.Scans.PollAsync(f.Settings, CancellationToken.None);
-        Check(f.Server.CompleteCalls == 0, "first observed results must start a full quiet minute");
-        f.Clock.Advance(59);
-        await f.Scans.PollAsync(f.Settings, CancellationToken.None);
-        Check(f.Server.CompleteCalls == 0, "59 seconds of silence is insufficient");
-        f.AddRow(3, "20");
-        f.Clock.Advance(1);
-        await f.Scans.PollAsync(f.Settings, CancellationToken.None);
-        Check(f.Server.CompleteCalls == 0, "new rows must restart the quiet minute");
-        f.Clock.Advance(60);
-        ElectricCheckScanState? done = await f.Scans.PollAsync(f.Settings, CancellationToken.None);
-        Check(done?.Status == "COMPLETED", "one unchanged minute must complete this scan");
-        Check(f.Server.UploadedRows.SetEquals([2L, 3L]), "all current product rows must upload before completion");
-        Check(f.Server.CompletedCount == 2 && f.Server.CompletedLastRow == 3, "completion must exclude historical rows and carry this product's count");
-        int calls = f.Server.CompleteCalls;
-        f.Clock.Advance(60);
-        await f.Scans.PollAsync(f.Settings, CancellationToken.None);
-        Check(f.Server.CompleteCalls == calls, "completed scans must not repeatedly exit");
-
-        using Fixture updated = new();
-        await updated.Scans.StartAsync(updated.Settings, "SN-A", CancellationToken.None);
-        updated.AddRow(2, "10");
-        await updated.Scans.PollAsync(updated.Settings, CancellationToken.None);
-        await updated.SyncAsync();
-        updated.Clock.Advance(60);
-        updated.UpdateRow(2, "99");
-        await updated.Scans.PollAsync(updated.Settings, CancellationToken.None);
-        Check(updated.Server.CompleteCalls == 0, "updated result values must reset silence even when rowid does not change");
-        updated.Clock.Advance(60);
-        await updated.Scans.PollAsync(updated.Settings, CancellationToken.None);
-        Check(updated.Server.CompleteCalls == 1, "updated results may complete after a fresh quiet minute");
-        Check(updated.Server.UploadedValues[2] == "99", "completion must refresh values even after the incremental cursor passed the row");
-
-        using Fixture failedUpload = new();
-        await failedUpload.Scans.StartAsync(failedUpload.Settings, "SN-A", CancellationToken.None);
-        failedUpload.AddRow(2, "10");
-        await failedUpload.Scans.PollAsync(failedUpload.Settings, CancellationToken.None);
-        failedUpload.Clock.Advance(60);
-        failedUpload.Server.FailUpload = true;
-        await RejectAsync(() => failedUpload.Scans.PollAsync(failedUpload.Settings, CancellationToken.None));
-        Check(failedUpload.Server.CompleteCalls == 0, "failed uploads must prevent exit");
-        failedUpload.Server.FailUpload = false;
-        await failedUpload.Scans.PollAsync(failedUpload.Settings, CancellationToken.None);
-        Check(failedUpload.Server.CompleteCalls == 1, "a successful retry may finish once all rows are uploaded");
-
-        using Fixture late = new();
-        await late.Scans.StartAsync(late.Settings, "SN-A", CancellationToken.None);
-        late.AddRow(2, "10");
-        await late.Scans.PollAsync(late.Settings, CancellationToken.None);
-        late.Clock.Advance(60);
-        late.Server.OnUpload = () => late.AddRow(3, "late");
-        await late.Scans.PollAsync(late.Settings, CancellationToken.None);
-        Check(late.Server.CompleteCalls == 0, "results arriving during upload must cancel the pending exit and restart silence");
-
-        using Fixture restart = new();
-        await restart.Scans.StartAsync(restart.Settings, "SN-A", CancellationToken.None);
-        restart.AddRow(2, "10");
-        await restart.Scans.PollAsync(restart.Settings, CancellationToken.None);
-        restart.Clock.Advance(600);
-        restart.Restart();
-        await restart.Scans.PollAsync(restart.Settings, CancellationToken.None);
-        Check(restart.Server.CompleteCalls == 0, "unobserved downtime must not count as a quiet minute");
-        restart.Clock.Advance(60);
-        await restart.Scans.PollAsync(restart.Settings, CancellationToken.None);
-        Check(restart.Server.CompleteCalls == 1, "recovered scans may finish after observing a full minute");
-
-        using Fixture retry = new();
-        await retry.Scans.StartAsync(retry.Settings, "SN-A", CancellationToken.None);
-        retry.AddRow(2, "10");
-        await retry.Scans.PollAsync(retry.Settings, CancellationToken.None);
-        retry.Clock.Advance(60);
-        retry.Server.FailComplete = true;
-        await RejectAsync(() => retry.Scans.PollAsync(retry.Settings, CancellationToken.None));
-        string original = retry.Server.CompleteBodies.Single();
-        retry.Server.FailComplete = false;
-        retry.Restart();
-        retry.Clock.Advance(60);
-        await retry.Scans.PollAsync(retry.Settings, CancellationToken.None);
-        Check(retry.Server.CompleteBodies.Count == 2 && retry.Server.CompleteBodies[1] == original,
-            "ambiguous completion must retry the exact persisted payload across restart");
-
-        using Fixture acknowledged = new();
-        await acknowledged.Scans.StartAsync(acknowledged.Settings, "SN-A", CancellationToken.None);
-        acknowledged.AddRow(2, "10");
-        await acknowledged.Scans.PollAsync(acknowledged.Settings, CancellationToken.None);
-        acknowledged.Clock.Advance(60); acknowledged.Server.LoseCompleteResponse = true;
-        await RejectAsync(() => acknowledged.Scans.PollAsync(acknowledged.Settings, CancellationToken.None));
-        acknowledged.Restart();
-        ElectricCheckScanState? recovered = await acknowledged.Scans.PollAsync(acknowledged.Settings, CancellationToken.None);
-        Check(recovered?.Status == "COMPLETED" && acknowledged.Server.CompleteCalls == 1,
-            "a committed completion with a lost response must recover from server status");
-
-        using Fixture businessError = new();
-        businessError.Server.FailUploadBusiness = true;
-        bool businessRejected = false;
-        try { await businessError.SyncAsync(); }
-        catch (InvalidOperationException) { businessRejected = true; }
-        Check(businessRejected, "HTTP200 with business failure must not acknowledge a batch");
-        businessError.Server.FailUploadBusiness = false;
-        Check((await businessError.SyncAsync()).Sent == 1, "business failure must leave the incremental cursor unchanged");
-        Console.WriteLine("Electric check scan and one-minute completion checks passed.");
+        await CheckSnNormalizationAsync();
+        await CheckContinuousQueueAsync();
+        await CheckEnqueueDuringNetworkWaitAsync();
+        await CheckEntryRetriesAsync();
+        await CheckDuplicateServerEntryAsync();
+        await CheckFifoSegmentsAsync();
+        await CheckQuietMinuteAsync();
+        await CheckChangedValuesAsync();
+        await CheckUploadFailuresAsync();
+        await CheckRestartObservationAsync();
+        await CheckCompletionRetryAsync();
+        await CheckLostCompletionResponseAsync();
+        await CheckRepeatedTestIdAsync();
+        await CheckLateResultsAsync();
+        Console.WriteLine("FIFO queue, SQLite recovery, idempotent retries and result boundary checks passed.");
     }
 
-    private static async Task CheckEntryCorrectionAsync()
+    private static async Task CheckSnNormalizationAsync()
     {
-        using Fixture rejected = new();
-        rejected.Server.FailEntry = true;
-        await RejectAsync(() => rejected.Scans.StartAsync(rejected.Settings, "SN-WRONG", CancellationToken.None));
-        string originalId = rejected.Scans.Current!.ScanId;
-        string originalTime = rejected.Scans.Current.ScanTime;
-        rejected.Clock.Advance(60);
-        await rejected.Scans.PollAsync(rejected.Settings, CancellationToken.None);
-        Check(rejected.Server.EntryBodies.Count == 1 && rejected.Scans.Current.Status == "PENDING_ENTRY",
-            "failed entry must pause automatic POST retries while SN is editable");
-        rejected.Server.FailEntry = false;
-        rejected.AddRow(2, "new result");
-        ElectricCheckScanState corrected = await rejected.Scans.StartAsync(rejected.Settings, " SN-CORRECT ", CancellationToken.None);
-        Check(corrected.Status == "TESTING" && corrected.SnCode == "SN-CORRECT",
-            "an uncommitted entry must allow a corrected SN");
-        Check(corrected.ScanId == originalId && corrected.ScanTime == originalTime && corrected.SourceRowIdBeforeScan == 1,
-            "correcting the same scan must retain its id and result boundary to avoid duplicate entries or lost results");
+        using Fixture f = new();
+        ElectricCheckScanState trimmed = await f.EnqueueAsync("\0\t SN-X \r\0");
+        Check(trimmed.SnCode == "SN-X", "SN normalization must match Java trim for all edge characters <= U+0020");
+        ElectricCheckScanState unicode = await f.EnqueueAsync("\u00a0SN-X\u00a0");
+        Check(unicode.SnCode == "\u00a0SN-X\u00a0", "non-ASCII spaces must remain consistent with Java registry comparison");
+    }
 
-        using Fixture restarted = new();
-        restarted.Server.FailEntry = true;
-        await RejectAsync(() => restarted.Scans.StartAsync(restarted.Settings, "SN-A", CancellationToken.None));
-        string originalBody = restarted.Server.EntryBodies.Single();
-        restarted.Restart();
-        await restarted.Scans.PollAsync(restarted.Settings, CancellationToken.None);
-        Check(restarted.Server.EntryBodies.Count == 1 && restarted.Scans.Current?.SnCode == "SN-A",
-            "restarting after a failed entry must preserve SN and keep automatic entry retries paused");
-        restarted.Server.FailEntry = false;
-        await restarted.Scans.StartAsync(restarted.Settings, "SN-A", CancellationToken.None);
-        Check(restarted.Server.EntryBodies[1] == originalBody, "manual retry without editing must reuse the persisted entry payload");
+    private static async Task CheckContinuousQueueAsync()
+    {
+        using Fixture f = new();
+        ElectricCheckScanState first = await f.EnqueueAsync(" SN-A ");
+        ElectricCheckScanState second = await f.EnqueueAsync("sn-a");
+        Check(first.SnCode == "SN-A" && first.Status == "PENDING_ENTRY", "enqueue must trim SN and save a pending entry");
+        Check(f.Server.Requests == 0, "local enqueue must not send or wait for any HTTP request");
+        Check(f.Scans.Entries.Count == 2 && first.Sequence < second.Sequence, "continuous scanning must preserve FIFO order and case-sensitive SNs");
+        await RejectAsync(() => f.EnqueueAsync("SN-A"));
+        Check(f.Scans.Entries.Count == 2, "duplicate local SN must not create another entry");
+        string firstId = first.ScanId;
+        f.Restart();
+        await f.PollAsync();
+        Check(f.Scans.Entries.Count == 2 && f.Scans.Entries[0].ScanId == firstId, "all queued entries and their order must survive restart");
+        Check(f.Server.Scans.Count == 2 && f.Server.EntryBodies.Count == 2, "one device must accept multiple pending products");
+        Check(f.Server.StatusCalls > 0, "queue polling must use the batch status endpoint");
+        Check(f.Server.Scans.Values.All(scan => scan.Identity.GetProperty("sourceRowIdBeforeScan").GetInt64() == 1), "first queue baseline must exclude instrument history");
+        f.Clock.Advance(600);
+        await f.PollAsync();
+        Check(f.Server.Completions.Count == 0, "no result rows must never cause an automatic exit");
+
+        using Fixture compatibility = new();
+        await compatibility.Scans.StartAsync(compatibility.Settings, "SN-FIRST", CancellationToken.None);
+        await compatibility.Scans.StartAsync(compatibility.Settings, "SN-SECOND", CancellationToken.None);
+        Check(compatibility.Scans.Entries.Count == 2 && compatibility.Server.Scans.Count == 2,
+            "legacy StartAsync must accept a second product while the first is testing");
+    }
+
+    private static async Task CheckEntryRetriesAsync()
+    {
+        using Fixture f = new();
+        ElectricCheckScanState first = await f.EnqueueAsync("SN-A");
+        await f.EnqueueAsync("SN-B");
+        f.Server.FailEntry = true;
+        await f.PollAllowFailureAsync();
+        Check(f.Server.EntryBodies.Count == 1 && f.Server.Scans.Count == 0, "unknown first entry must block later POSTs without losing queued scans");
+        string original = f.Server.EntryBodies[0];
+        Check(f.Scans.Entries.Count == 2 && f.Scans.Entries[0].Status == "PENDING_ENTRY", "network errors must retain the pending queue");
+        f.Restart();
+        f.Server.FailEntry = false;
+        await f.PollAsync();
+        Check(f.Server.EntryBodies.Count == 3 && f.Server.EntryBodies[1] == original,
+            "entry retry after restart must keep the exact payload before submitting the next SN");
+        Check(f.Server.Scans.Keys.First() == first.ScanId && f.Server.Scans.Count == 2, "entry retry must not reorder or duplicate scans");
 
         using Fixture lost = new();
+        ElectricCheckScanState queued = await lost.EnqueueAsync("SN-ORIGINAL");
         lost.Server.LoseEntryResponse = true;
-        await RejectAsync(() => lost.Scans.StartAsync(lost.Settings, "SN-ORIGINAL", CancellationToken.None));
+        await lost.PollAllowFailureAsync();
         lost.Restart();
-        ElectricCheckScanState recovered = await lost.Scans.StartAsync(lost.Settings, "SN-EDITED", CancellationToken.None);
-        Check(recovered.Status == "TESTING" && recovered.SnCode == "SN-ORIGINAL" && lost.Server.EntryBodies.Count == 1,
-            "an entry committed before losing its response must recover the server SN instead of submitting the edit");
+        await lost.PollAsync();
+        Check(lost.Server.EntryBodies.Count == 1 && lost.Scans.Entries.Single().ScanId == queued.ScanId
+            && lost.Scans.Entries.Single().Status == "TESTING", "lost entry response must recover by scanId without another POST");
 
         using Fixture offline = new();
-        offline.Server.FailEntry = true;
-        await RejectAsync(() => offline.Scans.StartAsync(offline.Settings, "SN-A", CancellationToken.None));
+        await offline.EnqueueAsync("SN-A");
         offline.Server.FailLookup = true;
-        await RejectAsync(() => offline.Scans.StartAsync(offline.Settings, "SN-B", CancellationToken.None));
-        Check(offline.Scans.Current?.SnCode == "SN-A" && offline.Server.EntryBodies.Count == 1,
-            "failed server verification must preserve the old SN and must not submit a replacement");
-
-        using Fixture delayed = new();
-        delayed.Server.DelayEntryCommit = true;
-        await RejectAsync(() => delayed.Scans.StartAsync(delayed.Settings, "SN-ORIGINAL", CancellationToken.None));
-        await RejectAsync(() => delayed.Scans.StartAsync(delayed.Settings, "SN-EDITED", CancellationToken.None));
-        await delayed.Scans.PollAsync(delayed.Settings, CancellationToken.None);
-        Check(delayed.Scans.Current?.Status == "TESTING" && delayed.Scans.Current.SnCode == "SN-ORIGINAL",
-            "an old request committing after verification must win the same scanId and recover its actual SN");
-
-        using Fixture correctedLost = new();
-        correctedLost.Server.FailEntry = true;
-        await RejectAsync(() => correctedLost.Scans.StartAsync(correctedLost.Settings, "SN-WRONG", CancellationToken.None));
-        correctedLost.Server.FailEntry = false;
-        correctedLost.Server.LoseEntryResponse = true;
-        await RejectAsync(() => correctedLost.Scans.StartAsync(correctedLost.Settings, "SN-CORRECT", CancellationToken.None));
-        correctedLost.Restart();
-        await correctedLost.Scans.PollAsync(correctedLost.Settings, CancellationToken.None);
-        Check(correctedLost.Scans.Current?.Status == "TESTING" && correctedLost.Scans.Current.SnCode == "SN-CORRECT"
-            && correctedLost.Server.EntryBodies.Count == 2,
-            "a corrected entry with a lost response must recover after restart without sending another entry");
-        Console.WriteLine("Failed entry SN correction and recovery checks passed.");
+        await offline.PollAllowFailureAsync();
+        Check(offline.Server.EntryBodies.Count == 0 && offline.Scans.Entries.Single().Status == "PENDING_ENTRY",
+            "failed verification must preserve the pending SN and must not blindly POST");
     }
 
-    private static void Check(bool value, string message)
+    private static async Task CheckEnqueueDuringNetworkWaitAsync()
     {
-        if (!value) throw new InvalidOperationException(message);
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A");
+        f.Server.EntryStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Server.ReleaseEntry = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task pending = f.PollAsync();
+        try
+        {
+            await f.Server.EntryStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            int requestCount = f.Server.Requests;
+            ElectricCheckScanState second = await f.EnqueueAsync("SN-B").WaitAsync(TimeSpan.FromSeconds(2));
+            Check(second.Status == "PENDING_ENTRY" && f.Scans.Entries.Count == 2 && f.Server.Requests == requestCount,
+                "scanning during a pending HTTP response must save locally without waiting for the network");
+        }
+        finally
+        {
+            f.Server.ReleaseEntry.SetResult(true);
+            await pending;
+        }
+        f.Server.EntryStarted = null; f.Server.ReleaseEntry = null;
+        await f.PollAsync();
+        Check(f.Server.Scans.Count == 2 && f.Server.EntryBodies.Count == 2, "overlapping poll and enqueue must retain both scans exactly once");
     }
 
+    private static async Task CheckDuplicateServerEntryAsync()
+    {
+        using Fixture f = new();
+        f.Server.RegisteredSns.Add("SN-TAKEN");
+        await f.EnqueueAsync("SN-TAKEN");
+        await f.EnqueueAsync("SN-NEXT");
+        await f.PollAsync();
+        Check(f.Scans.Entries[0].Status == "REJECTED" && f.Scans.Entries[1].Status == "TESTING",
+            "DUPLICATE_SN must reject only that entry and allow the next queued SN to enter");
+        Check(f.Server.Scans.Count == 1 && f.Server.Scans.Values.Single().Identity.GetProperty("snCode").GetString() == "SN-NEXT",
+            "duplicate SN must not create a remote scan");
+        f.Restart();
+        await RejectAsync(() => f.EnqueueAsync("SN-TAKEN"));
+        Check(f.Server.EntryBodies.Count == 2, "rejected SN must not be silently resubmitted after restart");
+    }
+
+    private static async Task CheckFifoSegmentsAsync()
+    {
+        using Fixture f = new();
+        ElectricCheckScanState first = await f.EnqueueAsync("SN-A");
+        await f.PollAsync();
+        f.AddRow(2, "a1", "A"); f.AddRow(3, "a2", "A");
+        ElectricCheckScanState second = await f.EnqueueAsync("SN-B");
+        ElectricCheckScanState third = await f.EnqueueAsync("SN-C");
+        f.AddRow(4, "b1", "B"); f.AddRow(5, "a3", "A");
+        await f.PumpAsync();
+        Check(f.Server.Completions.Count == 2, "known TestID boundaries may close the first two batches immediately");
+        CheckRange(f.Server.Completions[0], first.ScanId, 2, 3, 2);
+        CheckRange(f.Server.Completions[1], second.ScanId, 4, 4, 1);
+        Check(!f.Server.UploadedRows.Contains(1) && !f.Server.UploadedRows.Contains(5), "closed batches must exclude history and the final open group");
+        f.Restart(); await f.PollAsync();
+        f.Clock.Advance(59); await f.PollAsync();
+        Check(f.Server.Completions.Count == 2, "final segment requires a full observed quiet minute after restart");
+        f.Clock.Advance(1); await f.PollAsync();
+        Check(f.Server.Completions.Count == 3, "last FIFO segment must finish after sixty unchanged seconds");
+        CheckRange(f.Server.Completions[2], third.ScanId, 5, 5, 1);
+        Check(f.Server.UploadedRows.SetEquals([2L, 3L, 4L, 5L]), "FIFO ranges must neither skip nor consume another segment");
+        Check(f.Scans.Entries.All(entry => entry.Status == "COMPLETED" && entry.FinalResult == "OK"), "completed entries must expose final results");
+        f.Restart(); await RejectAsync(() => f.EnqueueAsync(" SN-A "));
+        Check(f.Scans.Entries.Count == 3, "completed SNs must remain reserved after reboot");
+    }
+
+    private static async Task CheckQuietMinuteAsync()
+    {
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A"); await f.PollAsync();
+        f.AddRow(2, "10"); f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Count == 0, "first observation starts a full quiet minute");
+        f.Clock.Advance(59); await f.PollAsync();
+        Check(f.Server.Completions.Count == 0, "59 seconds of silence must not complete a batch");
+        f.AddRow(3, "20"); f.Clock.Advance(1); await f.PollAsync();
+        Check(f.Server.Completions.Count == 0, "extra rows must restart the quiet minute");
+        f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Count == 1 && f.Server.Completions[0].Count == 2, "one unchanged minute must complete the batch");
+        f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.CompleteBodies.Count == 1, "completed scans must not repeatedly exit");
+    }
+
+    private static async Task CheckChangedValuesAsync()
+    {
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A"); await f.PollAsync();
+        f.AddRow(2, "10"); await f.PollAsync(); await f.SyncAsync();
+        f.Clock.Advance(60); f.UpdateRow(2, "99"); await f.PollAsync();
+        Check(f.Server.Completions.Count == 0, "changed values must restart silence even when rowid stays unchanged");
+        f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Count == 1 && f.Server.UploadedValues[2] == "99", "completion must refresh values after the incremental cursor passed the row");
+    }
+
+    private static async Task CheckUploadFailuresAsync()
+    {
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A"); await f.PollAsync();
+        f.AddRow(2, "10"); await f.PollAsync(); f.Clock.Advance(60);
+        f.Server.FailUpload = true; await f.PollAllowFailureAsync();
+        Check(f.Server.CompleteBodies.Count == 0, "HTTP upload failure must prevent completion");
+        f.Server.FailUpload = false; f.Server.FailUploadBusiness = true; await f.PollAllowFailureAsync();
+        Check(f.Server.CompleteBodies.Count == 0, "HTTP200 business upload failure must prevent completion");
+        f.Server.FailUploadBusiness = false; await f.PollAsync();
+        Check(f.Server.Completions.Count == 1, "successful range upload retry may complete the batch");
+
+        using Fixture cursor = new();
+        cursor.Server.FailUploadBusiness = true; await RejectAsync(() => cursor.SyncAsync());
+        cursor.Server.FailUploadBusiness = false;
+        Check((await cursor.SyncAsync()).Sent == 1, "business failure must leave the incremental cursor unchanged");
+    }
+
+    private static async Task CheckLateResultsAsync()
+    {
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A"); await f.PollAsync();
+        f.AddRow(2, "10"); await f.PollAsync(); f.Clock.Advance(60);
+        f.Server.OnUpload = () => f.AddRow(3, "late"); await f.PollAsync();
+        Check(f.Server.CompleteBodies.Count == 0, "results arriving during upload must cancel completion and restart silence");
+        f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Single().Count == 2, "retry must upload and complete the late result too");
+    }
+
+    private static async Task CheckRestartObservationAsync()
+    {
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A"); await f.PollAsync();
+        f.AddRow(2, "10"); await f.PollAsync();
+        f.Clock.Advance(600); f.Restart(); await f.PollAsync();
+        Check(f.Server.Completions.Count == 0, "unobserved downtime must not count as a quiet minute");
+        f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Count == 1, "recovered batches may complete after a full observed minute");
+    }
+
+    private static async Task CheckCompletionRetryAsync()
+    {
+        using Fixture f = new();
+        ElectricCheckScanState first = await f.EnqueueAsync("SN-A");
+        await f.EnqueueAsync("SN-B"); await f.PollAsync();
+        f.AddRow(2, "10"); await f.PollAsync(); f.Clock.Advance(60);
+        f.Server.FailComplete = true; await f.PollAllowFailureAsync();
+        string original = f.Server.CompleteBodies.Single();
+        f.AddRow(3, "next", "next"); f.Server.FailComplete = false; f.Restart(); await f.PollAsync();
+        Check(f.Server.CompleteBodies.Count == 2 && f.Server.CompleteBodies[1] == original, "ambiguous completion must retry the exact persisted payload despite later rows and restart");
+        CheckRange(f.Server.Completions.Single(), first.ScanId, 2, 2, 1);
+        await f.PumpAsync(); f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Count == 2 && f.Server.Completions[1].First == 3, "pending completion retry must leave subsequent rows for the next SN");
+    }
+
+    private static async Task CheckLostCompletionResponseAsync()
+    {
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A"); await f.PollAsync();
+        f.AddRow(2, "10"); await f.PollAsync(); f.Clock.Advance(60);
+        f.Server.LoseCompleteResponse = true; await f.PollAllowFailureAsync(); f.Restart(); await f.PollAsync();
+        Check(f.Scans.Entries.Single().Status == "COMPLETED" && f.Scans.Entries.Single().FinalResult == "OK" && f.Server.CompleteBodies.Count == 1,
+            "lost committed completion response must recover status and final result without repeating exit");
+        await f.EnqueueAsync("SN-B"); f.AddRow(3, "next"); await f.PumpAsync(); f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Count == 2 && f.Server.Completions[1].First == 3, "status recovery must advance the shared watermark exactly once");
+    }
+
+    private static async Task CheckRepeatedTestIdAsync()
+    {
+        using Fixture f = new();
+        await f.EnqueueAsync("SN-A"); await f.EnqueueAsync("SN-B"); await f.PollAsync();
+        f.AddRow(2, "first", "SAME"); await f.PollAsync(); f.Clock.Advance(60); await f.PollAsync();
+        f.AddRow(3, "second", "SAME"); await f.PumpAsync();
+        Check(f.Server.Completions.Count == 1, "same TestID after a completed quiet minute belongs to the next batch");
+        f.Clock.Advance(60); await f.PollAsync();
+        Check(f.Server.Completions.Count == 2 && f.Server.Completions[0].Last == 2 && f.Server.Completions[1].First == 3,
+            "separate quiet-minute batches must not merge merely because TestID repeats");
+    }
+
+    private static void CheckRange(CompletedRange range, string scanId, long first, long last, int count) =>
+        Check(range.ScanId == scanId && range.First == first && range.Last == last && range.Count == count,
+            $"FIFO scan {scanId} must bind rows {first}..{last} ({count} records), got {range}");
+    private static void Check(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
     private static async Task RejectAsync(Func<Task> action)
     {
         try { await action(); }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException) { return; }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or ArgumentException) { return; }
         throw new InvalidOperationException("operation should have failed");
     }
 
@@ -234,20 +306,27 @@ internal static class ElectricCheckScanChecks
             Directory.CreateDirectory(_directory);
             Settings = new() { DeviceNo = "EC-1", SqliteFilePath = Path.Combine(_directory, "results.db"), ServerBaseUrl = "http://electric-check.test" };
             Execute("CREATE TABLE ElectricCheck (TestDateTime TEXT,LightName TEXT,TestItemName TEXT,HighLimit TEXT,LowerLimit TEXT,TestValue TEXT,TestResult TEXT,LightType TEXT,TestID TEXT,TemplateItemID INTEGER,TemplateItemName TEXT,Remark TEXT,SNCode TEXT)");
-            AddRow(1, "history");
+            AddRow(1, "history", "history");
             _sync = new(new ElectricCheckSyncStateStore(_directory), new HttpClient(Server, disposeHandler: false));
             Scans = CreateService();
         }
         private ElectricCheckScanService CreateService() => new(_sync, new ElectricCheckScanStateStore(_directory), new HttpClient(Server, disposeHandler: false), Clock);
         public void Restart() { Scans.Dispose(); Scans = CreateService(); }
+        public Task<ElectricCheckScanState> EnqueueAsync(string sn) => Scans.EnqueueAsync(Settings, sn, CancellationToken.None);
+        public Task<ElectricCheckScanState?> PollAsync() => Scans.PollAsync(Settings, CancellationToken.None);
+        public async Task PollAllowFailureAsync()
+        {
+            try { await PollAsync(); }
+            catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException) { }
+        }
+        public async Task PumpAsync() { for (int i = 0; i < 4; i++) await PollAsync(); }
         public Task<ElectricCheckSyncResult> SyncAsync() => _sync.SyncOnceAsync(Settings, CancellationToken.None);
-        public void AddRow(long row, string value)
+        public void AddRow(long row, string value, string testId = "test")
         {
             using SqliteConnection connection = new($"Data Source={Settings.SqliteFilePath};Pooling=False");
-            connection.Open();
-            using SqliteCommand command = connection.CreateCommand();
-            command.CommandText = "INSERT INTO ElectricCheck(rowid,TestDateTime,LightName,TestItemName,TestValue,TestResult,LightType,TestID) VALUES($row,'2026-10-19 09:00:10.123','灯','电流',$value,'OK','近光','test')";
-            command.Parameters.AddWithValue("$row", row); command.Parameters.AddWithValue("$value", value);
+            connection.Open(); using SqliteCommand command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO ElectricCheck(rowid,TestDateTime,LightName,TestItemName,TestValue,TestResult,LightType,TestID,SNCode) VALUES($row,'2026-10-19 09:00:10.123','灯','电流',$value,'OK','近光',$testId,'INSTRUMENT-WRONG')";
+            command.Parameters.AddWithValue("$row", row); command.Parameters.AddWithValue("$value", value); command.Parameters.AddWithValue("$testId", testId);
             command.ExecuteNonQuery();
         }
         public void UpdateRow(long row, string value)
@@ -255,8 +334,7 @@ internal static class ElectricCheckScanChecks
             using SqliteConnection connection = new($"Data Source={Settings.SqliteFilePath};Pooling=False");
             connection.Open(); using SqliteCommand command = connection.CreateCommand();
             command.CommandText = "UPDATE ElectricCheck SET TestValue=$value WHERE rowid=$row";
-            command.Parameters.AddWithValue("$value", value); command.Parameters.AddWithValue("$row", row);
-            command.ExecuteNonQuery();
+            command.Parameters.AddWithValue("$value", value); command.Parameters.AddWithValue("$row", row); command.ExecuteNonQuery();
         }
         private void Execute(string sql)
         {
@@ -265,26 +343,35 @@ internal static class ElectricCheckScanChecks
         }
         public void Dispose()
         {
-            Scans.Dispose(); _sync.Dispose(); Server.Dispose();
-            SqliteConnection.ClearAllPools();
+            Scans.Dispose(); _sync.Dispose(); Server.Dispose(); SqliteConnection.ClearAllPools();
             string resolved = Path.GetFullPath(_directory);
             string temporaryRoot = Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (!resolved.StartsWith(temporaryRoot, StringComparison.OrdinalIgnoreCase)
-                || !Path.GetFileName(resolved).StartsWith("c-lan-scan-", StringComparison.Ordinal))
+            if (!resolved.StartsWith(temporaryRoot, StringComparison.OrdinalIgnoreCase) || !Path.GetFileName(resolved).StartsWith("c-lan-scan-", StringComparison.Ordinal))
                 throw new InvalidOperationException("Unexpected test cleanup path");
-            Directory.Delete(_directory, recursive: true);
+            Directory.Delete(resolved, recursive: true);
         }
+    }
+
+    private sealed record CompletedRange(string ScanId, long First, long Last, int Count);
+    private sealed class ServerScan(JsonElement identity)
+    {
+        public JsonElement Identity { get; } = identity.Clone();
+        public string Status { get; set; } = "TESTING";
+        public CompletedRange? Completion { get; set; }
+        public object Response() => new
+        {
+            scanId = Identity.GetProperty("scanId").GetString(), deviceNo = Identity.GetProperty("deviceNo").GetString(),
+            snCode = Identity.GetProperty("snCode").GetString(), scanTime = Identity.GetProperty("scanTime").GetString(),
+            sourceRowIdBeforeScan = Identity.GetProperty("sourceRowIdBeforeScan").GetInt64(), status = Status,
+            firstSourceRowId = Completion?.First, lastSourceRowId = Completion?.Last,
+            expectedRecordCount = Completion?.Count, finalResult = Status == "COMPLETED" ? "OK" : null
+        };
     }
 
     private sealed class FakeServer : HttpMessageHandler
     {
-        private JsonElement? _scan;
-        private string _status = "TESTING";
-        public long LastBaseline;
-        public string? DeviceNo;
-        public int CompleteCalls;
-        public int CompletedCount;
-        public long CompletedLastRow;
+        public int Requests;
+        public int StatusCalls;
         public bool FailUpload;
         public bool FailUploadBusiness;
         public bool FailComplete;
@@ -292,93 +379,90 @@ internal static class ElectricCheckScanChecks
         public bool FailEntry;
         public bool FailLookup;
         public bool LoseEntryResponse;
-        public bool DelayEntryCommit;
-        private string? _delayedEntryBody;
+        public TaskCompletionSource<bool>? EntryStarted;
+        public TaskCompletionSource<bool>? ReleaseEntry;
         public Action? OnUpload;
+        public readonly Dictionary<string, ServerScan> Scans = new(StringComparer.Ordinal);
+        public readonly HashSet<string> RegisteredSns = new(StringComparer.Ordinal);
         public readonly HashSet<long> UploadedRows = [];
         public readonly Dictionary<long, string?> UploadedValues = [];
         public readonly List<string> CompleteBodies = [];
+        public readonly List<CompletedRange> Completions = [];
         public readonly List<string> EntryBodies = [];
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            string path = request.RequestUri!.AbsolutePath;
+            Requests++;
+            Uri uri = request.RequestUri!;
+            string path = uri.AbsolutePath;
             string body = request.Content is null ? "{}" : await request.Content.ReadAsStringAsync(cancellationToken);
             using JsonDocument json = JsonDocument.Parse(body);
             JsonElement data = json.RootElement;
-            if (path.EndsWith("records:batch"))
+            if (path.EndsWith("records:batch", StringComparison.Ordinal))
             {
                 if (FailUpload) return Reply(new { code = 500, msg = "upload rejected" }, HttpStatusCode.InternalServerError);
                 if (FailUploadBusiness) return Reply(new { code = 500, msg = "business rejected" });
                 foreach (JsonElement item in data.GetProperty("records").EnumerateArray())
                 {
+                    Check(!item.TryGetProperty("snCode", out JsonElement sourceSn) || sourceSn.ValueKind == JsonValueKind.Null, "FIFO uploads must omit instrument SN so server binding follows scan order");
                     long row = item.GetProperty("sourceRowId").GetInt64();
                     UploadedRows.Add(row); UploadedValues[row] = item.GetProperty("testValue").GetString();
                 }
                 Action? action = OnUpload; OnUpload = null; action?.Invoke();
                 return Reply(new { code = 200 });
             }
-            if (path.EndsWith("/complete"))
+            if (path.EndsWith("/complete", StringComparison.Ordinal))
             {
-                CompleteCalls++; CompleteBodies.Add(body);
-                CompletedCount = data.GetProperty("expectedRecordCount").GetInt32();
-                CompletedLastRow = data.GetProperty("lastSourceRowId").GetInt64();
-                Check(UploadedRows.Contains(CompletedLastRow), "completion must follow successful result upload");
+                CompleteBodies.Add(body);
+                string id = Uri.UnescapeDataString(path.Split('/')[^2]);
+                Check(Scans.ContainsKey(id), "only an acknowledged entry may complete");
+                CompletedRange range = new(id, data.GetProperty("firstSourceRowId").GetInt64(), data.GetProperty("lastSourceRowId").GetInt64(), data.GetProperty("expectedRecordCount").GetInt32());
+                Check(range.First <= range.Last && UploadedRows.Count(row => row >= range.First && row <= range.Last) == range.Count, "completion must carry an explicit range of successfully uploaded rows");
                 if (FailComplete) return Reply(new { code = 500 }, HttpStatusCode.InternalServerError);
-                _status = "COMPLETED";
-                if (LoseCompleteResponse)
+                ServerScan scan = Scans[id];
+                if (scan.Completion is null)
                 {
-                    LoseCompleteResponse = false;
-                    return Reply(new { code = 500 }, HttpStatusCode.InternalServerError);
+                    Check(Completions.All(previous => previous.Last < range.First || previous.First > range.Last), "completed ranges must never overlap");
+                    scan.Completion = range; Completions.Add(range); scan.Status = "COMPLETED";
                 }
-                return ScanReply();
+                else Check(scan.Completion == range, "completion retry must preserve the original range");
+                if (LoseCompleteResponse) { LoseCompleteResponse = false; throw new HttpRequestException("completion committed but response was lost"); }
+                return Reply(new { code = 200, data = scan.Response() });
             }
-            if (request.Method == HttpMethod.Post && path.EndsWith("/scans"))
+            if (request.Method == HttpMethod.Post && path.EndsWith("/scans", StringComparison.Ordinal))
             {
                 EntryBodies.Add(body);
+                EntryStarted?.TrySetResult(true);
+                if (ReleaseEntry is not null) await ReleaseEntry.Task.WaitAsync(cancellationToken);
                 if (FailEntry) return Reply(new { code = 500 }, HttpStatusCode.InternalServerError);
-                if (DelayEntryCommit)
+                string id = data.GetProperty("scanId").GetString()!;
+                string sn = data.GetProperty("snCode").GetString()!;
+                if (!Scans.TryGetValue(id, out ServerScan? scan))
                 {
-                    DelayEntryCommit = false; _delayedEntryBody = body;
-                    throw new HttpRequestException("entry timed out before its transaction committed");
+                    if (!RegisteredSns.Add(sn)) return Reply(new { code = 409, businessCode = "DUPLICATE_SN", msg = "SN already entered" }, HttpStatusCode.Conflict);
+                    scan = new(data); Scans.Add(id, scan);
                 }
-                if (_delayedEntryBody is not null)
-                {
-                    using JsonDocument delayed = JsonDocument.Parse(_delayedEntryBody);
-                    StoreEntry(delayed.RootElement); _delayedEntryBody = null;
-                }
-                if (_scan is not null && (_scan.Value.GetProperty("scanId").GetString() != data.GetProperty("scanId").GetString()
-                        || _scan.Value.GetProperty("snCode").GetString() != data.GetProperty("snCode").GetString()))
-                    return Reply(new { code = 409, msg = "scan identity cannot be overwritten" }, HttpStatusCode.Conflict);
-                if (_scan is null) StoreEntry(data);
-                if (LoseEntryResponse)
-                {
-                    LoseEntryResponse = false;
-                    throw new HttpRequestException("entry committed but response was lost");
-                }
-                return ScanReply();
+                else Check(scan.Identity.GetRawText() == data.GetRawText(), "entry retries must preserve all five original fields");
+                if (LoseEntryResponse) { LoseEntryResponse = false; throw new HttpRequestException("entry committed but response was lost"); }
+                return Reply(new { code = 200, data = scan.Response() });
             }
             if (request.Method == HttpMethod.Get)
             {
                 if (FailLookup) return Reply(new { code = 500 }, HttpStatusCode.InternalServerError);
-                if (path.EndsWith("/current")) return _scan is null || _status != "TESTING" ? Reply(new { code = 200 }) : ScanReply();
-                return _scan is null ? Reply(new { code = 404 }, HttpStatusCode.NotFound) : ScanReply();
+                Dictionary<string, string> query = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(part => part.Split('=', 2)).ToDictionary(part => Uri.UnescapeDataString(part[0]), part => Uri.UnescapeDataString(part[1]));
+                Check(query.GetValueOrDefault("deviceNo") == "EC-1", "status lookups must identify the configured device");
+                if (path.EndsWith("/status", StringComparison.Ordinal))
+                {
+                    StatusCalls++;
+                    string[] ids = query["scanIds"].Split(',');
+                    Check(ids.Length is > 0 and <= 100 && ids.Distinct().Count() == ids.Length, "batch status requests need 1..100 distinct scan IDs");
+                    return Reply(new { code = 200, data = ids.Where(Scans.ContainsKey).Select(id => Scans[id].Response()).ToArray() });
+                }
+                if (path.EndsWith("/current", StringComparison.Ordinal)) return Reply(new { code = 200, data = Scans.Values.FirstOrDefault(scan => scan.Status == "TESTING")?.Response() });
+                string id = Uri.UnescapeDataString(path.Split('/')[^1]);
+                return Scans.TryGetValue(id, out ServerScan? scan) ? Reply(new { code = 200, data = scan.Response() }) : Reply(new { code = 404 }, HttpStatusCode.NotFound);
             }
-            throw new InvalidOperationException("Unexpected request: " + request.RequestUri);
-        }
-        private void StoreEntry(JsonElement data)
-        {
-            _scan = data.Clone(); _status = "TESTING";
-            LastBaseline = data.GetProperty("sourceRowIdBeforeScan").GetInt64();
-            DeviceNo = data.GetProperty("deviceNo").GetString();
-        }
-        private HttpResponseMessage ScanReply()
-        {
-            JsonElement scan = _scan!.Value;
-            return Reply(new { code = 200, data = new {
-                scanId = scan.GetProperty("scanId").GetString(), deviceNo = DeviceNo,
-                snCode = scan.GetProperty("snCode").GetString(), scanTime = scan.GetProperty("scanTime").GetString(),
-                sourceRowIdBeforeScan = LastBaseline, status = _status
-            }});
+            throw new InvalidOperationException("Unexpected request: " + uri);
         }
         private static HttpResponseMessage Reply(object value, HttpStatusCode status = HttpStatusCode.OK) => new(status)
         { Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json") };

@@ -17,12 +17,25 @@ internal static class CollectorUploadChecks
         catch (InvalidOperationException) { failed = true; }
         Check(failed, "network failure must be reported");
         ElectricCheckSyncResult sent = await fixture.Sync.SyncOnceAsync(fixture.Settings, CancellationToken.None);
-        Check(sent.Sent == 3 && sent.LastRowId == 3, "failed batches must retry without advancing the cursor");
+        Check(sent.Sent == 1 && sent.LastRowId == 3, "failed batches must retry without advancing the cursor");
         ElectricCheckSyncResult empty = await fixture.Sync.SyncOnceAsync(fixture.Settings, CancellationToken.None);
-        Check(empty.Sent == 0 && fixture.Server.Rows.SequenceEqual(new long[] { 1, 2, 3 }), "successful batches must not resend uploaded rows");
+        Check(empty.Sent == 0 && fixture.Server.Rows.SequenceEqual(new long[] { 1 }), "successful batches must not resend uploaded rows");
         using ElectricCheckSyncService restarted = new(new ElectricCheckSyncStateStore(fixture.Directory), new HttpClient(fixture.Server, false));
         Check((await restarted.SyncOnceAsync(fixture.Settings, CancellationToken.None)).Sent == 0, "cursor must survive restart");
         Check(fixture.Server.Paths.All(p => p == "/openapi/electric-check/records:batch"), "collector must never call scan or completion endpoints");
+        using (SqliteConnection db = new($"Data Source={fixture.Settings.SqliteFilePath};Pooling=False"))
+        {
+            db.Open();
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = "INSERT INTO ElectricCheck SELECT * FROM ElectricCheck LIMIT 1; UPDATE ElectricCheck SET TestID='RECENT',TestDateTime=$time WHERE rowid=4";
+            cmd.Parameters.AddWithValue("$time", DateTime.Now.AddMinutes(-29).ToString("yyyy-MM-dd HH:mm:ss"));
+            cmd.ExecuteNonQuery();
+            Check((await fixture.Sync.SyncOnceAsync(fixture.Settings, CancellationToken.None)).Sent == 0, "recent group must remain pending");
+            cmd.CommandText = "UPDATE ElectricCheck SET TestDateTime=$old WHERE rowid=4";
+            cmd.Parameters.AddWithValue("$old", DateTime.Now.AddMinutes(-31).ToString("yyyy-MM-dd HH:mm:ss"));
+            cmd.ExecuteNonQuery();
+            Check((await fixture.Sync.SyncOnceAsync(fixture.Settings, CancellationToken.None)).Sent == 1, "pending group must upload after thirty minutes");
+        }
         Console.WriteLine("Collector SQLite batch upload, retry, cursor and endpoint checks passed.");
     }
 
@@ -45,6 +58,7 @@ internal static class CollectorUploadChecks
                     INSERT INTO ElectricCheck VALUES ('2026-10-28 08:00:00','L','Item',NULL,NULL,'1','OK','Type','T',1,NULL,NULL,'INSTRUMENT-SN');
                     INSERT INTO ElectricCheck SELECT * FROM ElectricCheck;
                     INSERT INTO ElectricCheck SELECT * FROM ElectricCheck LIMIT 1;
+                    UPDATE ElectricCheck SET TestResult='NG' WHERE rowid=3;
                     """;
                 command.ExecuteNonQuery();
             }
@@ -76,6 +90,9 @@ internal static class CollectorUploadChecks
             {
                 Check(!row.TryGetProperty("snCode", out JsonElement sn) || sn.ValueKind == JsonValueKind.Null, "collector must leave SN binding to the server");
                 Rows.Add(row.GetProperty("sourceRowId").GetInt64());
+                Check(row.GetProperty("testId").GetString() != "T" || row.GetProperty("testResult").GetString() == "NG", "NG on the final page must determine the summary");
+                Check(row.GetProperty("testId").GetString() != "T" || row.GetProperty("sourceRecordCount").GetInt32() == 3, "summary must contain all original rows");
+                Check(!row.TryGetProperty("testValue", out _), "detail values must not be uploaded");
             }
             return new(HttpStatusCode.OK) { Content = new StringContent("{\"code\":200}", Encoding.UTF8, "application/json") };
         }

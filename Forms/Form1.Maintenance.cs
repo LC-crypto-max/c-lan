@@ -41,7 +41,7 @@ public partial class Form1
 
     private bool TryUnlockMaintenance(string password)
     {
-        if (!string.Equals(password, "lyc3191", StringComparison.Ordinal)) return false;
+        if (!string.Equals(password, "xy123456", StringComparison.Ordinal)) return false;
         _maintenanceUnlocked = true;
         _collectorPanel.Visible = false;
         HeaderPanel.Visible = MainSplitContainer.Visible = MainStatusStrip.Visible = true;

@@ -1,4 +1,4 @@
-﻿using c_lan.Configuration;
+using c_lan.Configuration;
 using c_lan.Models;
 using Microsoft.Data.Sqlite;
 using System.Globalization;
@@ -41,8 +41,14 @@ public sealed class ElectricCheckSyncService : IDisposable
             {
                 List<ElectricCheckRecordPayload> records = await ReadBatchAsync(settings, last, token);
                 if (records.Count == 0) return new ElectricCheckSyncResult(total, last, total == 0 ? "没有新数据" : $"已同步 {total} 条");
+                var confirmed = await ReadBatchAsync(settings, records[0].SourceRowId - 1, token, records[^1].LastSourceRowId);
+                if (JsonSerializer.Serialize(records, JsonOptions) != JsonSerializer.Serialize(confirmed, JsonOptions))
+                    throw new InvalidDataException("上传前检测汇总发生变化，保留同步进度等待重试。");
                 await SendBatchAsync(settings, records, token);
-                last = records[^1].SourceRowId;
+                var afterUpload = await ReadBatchAsync(settings, records[0].SourceRowId - 1, token, records[^1].LastSourceRowId);
+                if (JsonSerializer.Serialize(records, JsonOptions) != JsonSerializer.Serialize(afterUpload, JsonOptions))
+                    throw new InvalidDataException("上传期间检测汇总发生变化，保留进度重新同步。");
+                last = records[^1].LastSourceRowId;
                 await _stateStore.SaveAsync(StateKey(settings), last, token);
                 total += records.Count;
             }
@@ -62,9 +68,15 @@ public sealed class ElectricCheckSyncService : IDisposable
             while (true)
             {
                 List<ElectricCheckRecordPayload> records = await ReadBatchAsync(settings, cursor, token, last);
-                if (records.Count == 0) return;
+                if (records.Count == 0) { if (cursor < last) throw new InvalidOperationException("检测尚未满30分钟或范围不完整。"); return; }
+                var confirmed = await ReadBatchAsync(settings, records[0].SourceRowId - 1, token, records[^1].LastSourceRowId);
+                if (JsonSerializer.Serialize(records, JsonOptions) != JsonSerializer.Serialize(confirmed, JsonOptions))
+                    throw new InvalidDataException("上传前检测汇总发生变化，保留同步进度等待重试。");
                 await SendBatchAsync(settings, records, token);
-                cursor = records[^1].SourceRowId;
+                var afterUpload = await ReadBatchAsync(settings, records[0].SourceRowId - 1, token, records[^1].LastSourceRowId);
+                if (JsonSerializer.Serialize(records, JsonOptions) != JsonSerializer.Serialize(afterUpload, JsonOptions))
+                    throw new InvalidDataException("上传期间检测汇总发生变化，保留进度重新同步。");
+                cursor = records[^1].LastSourceRowId;
             }
         }
         finally { _gate.Release(); }
@@ -111,16 +123,37 @@ public sealed class ElectricCheckSyncService : IDisposable
     private static async Task<List<ElectricCheckRecordPayload>> ReadBatchAsync(ElectricCheckSyncSettings settings, long cursor, CancellationToken token, long? last = null)
     {
         string table = QuoteIdentifier(settings.TableName);
-        string sql = $"SELECT rowid, TestDateTime, LightName, TestItemName, HighLimit, LowerLimit, TestValue, TestResult, LightType, TestID, TemplateItemID, TemplateItemName, Remark, SNCode FROM {table} WHERE rowid > $cursor AND rowid <= $last ORDER BY rowid LIMIT $limit";
         using SqliteConnection connection = new(new SqliteConnectionStringBuilder { DataSource = settings.SqliteFilePath, Mode = SqliteOpenMode.ReadOnly }.ToString());
         await connection.OpenAsync(token);
-        using SqliteCommand command = new(sql, connection);
+        // Read complete groups, never aggregate an arbitrary page of source rows.
+        using SqliteCommand command = new($"SELECT rowid, TestDateTime, LightName, TestItemName, HighLimit, LowerLimit, TestValue, TestResult, LightType, TestID, TemplateItemID, TemplateItemName, Remark, SNCode FROM {table} WHERE TestID IN (SELECT TestID FROM {table} WHERE rowid > $cursor AND rowid <= $last) ORDER BY rowid", connection);
         command.Parameters.AddWithValue("$cursor", cursor);
         command.Parameters.AddWithValue("$last", last ?? long.MaxValue);
-        command.Parameters.AddWithValue("$limit", Math.Clamp(settings.BatchSize, 1, 200));
         using SqliteDataReader reader = await command.ExecuteReaderAsync(token);
+        List<ElectricCheckRecordPayload> rows = [];
+        while (await reader.ReadAsync(token)) rows.Add(Map(reader));
+        var groups = rows.GroupBy(r => r.TestId).OrderBy(g => g.Min(r => r.SourceRowId)).ToList();
         List<ElectricCheckRecordPayload> result = [];
-        while (await reader.ReadAsync(token)) result.Add(Map(reader));
+        DateTime cutoff = DateTime.Now.AddMinutes(-30);
+        foreach (var group in groups)
+        {
+            var first = group.First();
+            long end = group.Max(r => r.SourceRowId);
+            if (first.SourceRowId <= cursor || end > (last ?? long.MaxValue))
+                throw new InvalidDataException("test_id跨越已同步边界，请核实源库或重置同步进度。");
+            if (groups.Any(g => g.Key != group.Key && g.Min(r => r.SourceRowId) < end && g.Max(r => r.SourceRowId) > first.SourceRowId))
+                throw new InvalidDataException("检测批次行号交错，已停止推进同步进度。");
+            DateTime latest = group.Max(r => DateTime.Parse(r.TestDateTime, CultureInfo.InvariantCulture));
+            if (latest > cutoff) break;
+            var values = group.Select(r => r.TestResult.Trim().ToUpperInvariant()).ToArray();
+            if (values.Any(v => v != "OK" && v != "NG")) throw new InvalidDataException("检测结果只能为OK或NG。");
+            first.LastSourceRowId = end;
+            first.SourceRecordCount = group.Count();
+            first.TestDateTime = latest.ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture);
+            first.TestResult = values.Contains("NG") ? "NG" : "OK";
+            result.Add(first);
+            if (result.Count >= Math.Clamp(settings.BatchSize, 1, 200)) break;
+        }
         return result;
     }
 
@@ -129,7 +162,7 @@ public sealed class ElectricCheckSyncService : IDisposable
         SourceRowId = reader.GetInt64(0),
         TestDateTime = FormatTestDateTimeForApi(reader.GetString(1)),
         LightName = Required(reader.GetValue(2)),
-        TestItemName = Required(reader.GetValue(3)),
+        TestItemName = Optional(reader.GetValue(3)) ?? "",
         HighLimit = Optional(reader.GetValue(4)),
         LowerLimit = Optional(reader.GetValue(5)),
         TestValue = Optional(reader.GetValue(6)),

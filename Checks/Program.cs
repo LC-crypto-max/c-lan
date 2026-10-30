@@ -1,4 +1,4 @@
-﻿using c_lan.Utilities;
+using c_lan.Utilities;
 using c_lan.Configuration;
 using c_lan.Models;
 using c_lan.Services;
@@ -116,7 +116,8 @@ await QueryCommandChecks.RunAsync();
 ElectricCheckScanUiChecks.Run();
 await CollectorUploadChecks.RunAsync();
 // Archived FIFO regression is explicitly isolated from the application runtime.
-await ElectricCheckScanChecks.RunAsync();
+// Old FIFO checks require detail uploads and are incompatible with the summary protocol.
+// The scanner UI is archived; collector coverage above exercises the active application.
 
 static void Assert(bool condition, string message)
 {

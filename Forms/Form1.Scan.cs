@@ -1,4 +1,4 @@
-// Archived scanner UI wiring. Collector mode must not initialize, enqueue or poll SN business.
+﻿// Archived scanner UI wiring. Collector mode must not initialize, enqueue or poll SN business.
 #if false
 using c_lan.Configuration;
 using c_lan.Models;
@@ -12,63 +12,130 @@ public partial class Form1
     private System.Windows.Forms.Timer _scanTimer = null!;
     private readonly CancellationTokenSource _scanCancellation = new();
     private Task _scanWork = Task.CompletedTask;
+    private Task _scanEntryWork = Task.CompletedTask;
     private bool _scanOperation;
+    private int _scanEnqueueCount;
+    private Panel _scanPanel = null!;
     private TextBox _scanInput = null!;
     private Button _scanSubmit = null!;
     private Label _scanDeviceInfo = null!;
     private Label _scanStateInfo = null!;
-    private string? _editableScanId;
+    private DataGridView _scanGrid = null!;
 
     private void InitializeScanUi()
     {
         _scanService = new ElectricCheckScanService(_syncService, new ElectricCheckScanStateStore());
-        TabPage page = new("产品扫码") { Padding = new Padding(20), BackColor = Color.White };
+        _scanPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24), BackColor = Color.White };
         TableLayoutPanel layout = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _scanDeviceInfo = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 12) };
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        TableLayoutPanel heading = new() { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2 };
+        heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        heading.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _scanDeviceInfo = new Label { AutoSize = true, Margin = new Padding(0, 8, 0, 16) };
+        Button settings = new() { Text = "设置", AutoSize = true, AccessibleName = "打开维护设置" };
+        settings.Click += (_, _) => ShowMaintenancePassword();
+        heading.Controls.Add(_scanDeviceInfo, 0, 0);
+        heading.Controls.Add(settings, 1, 0);
         FlowLayoutPanel input = new() { AutoSize = true, Dock = DockStyle.Fill, WrapContents = true };
-        input.Controls.Add(new Label { Text = "产品 SN", AutoSize = true, Margin = new Padding(0, 8, 10, 0) });
-        _scanInput = new TextBox { Width = 300, MaxLength = 128, AccessibleName = "产品SN" };
-        _scanSubmit = new Button { Text = "扫码入站", AutoSize = true, Height = 32 };
-        Button retry = new() { Text = "检查 / 重试", AutoSize = true, Height = 32 };
-        input.Controls.Add(_scanInput); input.Controls.Add(_scanSubmit); input.Controls.Add(retry);
-        _scanStateInfo = new Label { Dock = DockStyle.Fill, AutoEllipsis = true, Padding = new Padding(0, 16, 0, 0) };
-        Label hint = new()
+        input.Controls.Add(new Label { Text = "产品 SN", AutoSize = true, Margin = new Padding(0, 10, 10, 0) });
+        _scanInput = new TextBox { Width = 420, MaxLength = 128, AccessibleName = "产品SN", Font = new Font(Font.FontFamily, 14) };
+        _scanSubmit = new Button { Text = "扫码入站", AutoSize = true, Height = 36 };
+        input.Controls.Add(_scanInput);
+        input.Controls.Add(_scanSubmit);
+        _scanStateInfo = new Label
         {
-            AutoSize = true, MaximumSize = new Size(750, 0),
-            Text = "扫码枪请设置为回车结束。入站失败后可修改SN并点击“重新入站”；入站成功前请勿检测。已有结果且稳定满一分钟，上传成功后自动出站。"
+            AutoSize = true, Dock = DockStyle.Fill, AutoEllipsis = true,
+            Margin = new Padding(0, 10, 0, 16),
+            Text = "扫码枪以回车结束；可连续扫码。记录按扫码顺序关联检测结果。"
         };
-        layout.Controls.Add(_scanDeviceInfo, 0, 0); layout.Controls.Add(input, 0, 1);
-        layout.Controls.Add(_scanStateInfo, 0, 2); layout.Controls.Add(hint, 0, 3);
-        page.Controls.Add(layout);
-        ResultTabControl.TabPages.Insert(0, page);
-        ResultTabControl.SelectedTab = page;
-        page.Enter += (_, _) => { if (_scanInput.Enabled) _scanInput.Focus(); };
-        _scanSubmit.Click += async (_, _) => await BeginScanOperationAsync(_scanInput.Text);
+        _scanGrid = new DataGridView
+        {
+            Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false, AllowUserToResizeRows = false,
+            RowHeadersVisible = false, AutoGenerateColumns = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            BackgroundColor = Color.White, BorderStyle = BorderStyle.None,
+            AccessibleName = "最近扫码记录"
+        };
+        foreach ((string name, string title, int weight) in new[]
+        {
+            ("SnCode", "产品 SN", 23), ("ScanTime", "扫码时间", 20),
+            ("Status", "状态", 13), ("FinalResult", "结果", 9), ("Message", "说明", 35)
+        })
+            _scanGrid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = name, HeaderText = title, FillWeight = weight,
+                SortMode = DataGridViewColumnSortMode.NotSortable
+            });
+        _scanGrid.RowTemplate.Height = 32;
+        _scanGrid.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
+        layout.Controls.Add(heading, 0, 0);
+        layout.Controls.Add(input, 0, 1);
+        layout.Controls.Add(_scanStateInfo, 0, 2);
+        layout.Controls.Add(_scanGrid, 0, 3);
+        _scanPanel.Controls.Add(layout);
+        Controls.Add(_scanPanel);
+        _scanPanel.BringToFront();
+        InitializeMaintenanceUi();
+        _scanSubmit.Click += async (_, _) => await BeginEnqueueAsync(_scanInput.Text);
         _scanInput.KeyDown += async (_, e) =>
         {
             if (e.KeyCode != Keys.Enter) return;
             e.SuppressKeyPress = true;
-            await BeginScanOperationAsync(_scanInput.Text);
+            await BeginEnqueueAsync(_scanInput.Text);
         };
-        retry.Click += async (_, _) => await BeginScanOperationAsync(
-            _scanService.Current?.Status == "PENDING_ENTRY" ? _scanInput.Text : null);
-        _scanTimer = new System.Windows.Forms.Timer(components!) { Interval = (int)ElectricCheckScanService.CheckInterval.TotalMilliseconds };
+        _scanTimer = new System.Windows.Forms.Timer(components!) { Interval = 2000 };
         _scanTimer.Tick += async (_, _) => await BeginScanOperationAsync();
         RefreshScanUi();
     }
 
-    private Task BeginScanOperationAsync(string? sn = null)
+    private Task BeginEnqueueAsync(string sn)
+    {
+        if (_scanCancellation.IsCancellationRequested) return Task.CompletedTask;
+        // 本地保存期间下一支扫码可直接替换选中的文字，不等待后台网络请求。
+        _scanInput.SelectAll();
+        Task work = EnqueueScanAsync(sn);
+        _scanEntryWork = _scanEntryWork.IsCompleted ? work : Task.WhenAll(_scanEntryWork, work);
+        return work;
+    }
+
+    private async Task EnqueueScanAsync(string sn)
+    {
+        string? error = null;
+        _scanEnqueueCount++;
+        RefreshScanUi();
+        try
+        {
+            ElectricCheckSyncSettings settings = BuildSyncSettings();
+            SaveSyncSettings();
+            await _scanService.EnqueueAsync(settings, sn, _scanCancellation.Token);
+            if (_scanInput.Text == sn) _scanInput.Clear();
+        }
+        catch (OperationCanceledException) when (_scanCancellation.IsCancellationRequested) { }
+        catch (Exception ex) { error = "扫码未保存：" + ex.Message; }
+        finally
+        {
+            _scanEnqueueCount--;
+            if (!IsDisposed && !_scanCancellation.IsCancellationRequested)
+            {
+                RefreshScanUi(error);
+                if (!_maintenanceUnlocked) _scanInput.Focus();
+            }
+        }
+    }
+
+    private Task BeginScanOperationAsync()
     {
         if (_scanOperation || _scanCancellation.IsCancellationRequested) return Task.CompletedTask;
-        _scanWork = PerformScanOperationAsync(sn);
+        _scanWork = PollScansAsync();
         return _scanWork;
     }
 
-    private async Task PerformScanOperationAsync(string? sn)
+    private async Task PollScansAsync()
     {
         string? error = null;
         _scanOperation = true;
@@ -76,61 +143,42 @@ public partial class Form1
         try
         {
             ElectricCheckSyncSettings settings = BuildSyncSettings();
-            // 尚未配置的程序仍可使用数据库浏览，扫码功能等待配置完成。
-            if (sn is null && (string.IsNullOrWhiteSpace(settings.DeviceNo)
-                    || string.IsNullOrWhiteSpace(settings.ServerBaseUrl) || !File.Exists(settings.SqliteFilePath))) return;
-            if (sn is null) await _scanService.PollAsync(settings, _scanCancellation.Token);
-            else
-            {
-                SaveSyncSettings();
-                await _scanService.StartAsync(settings, sn, _scanCancellation.Token);
-                _scanInput.Clear();
-            }
+            if (string.IsNullOrWhiteSpace(settings.DeviceNo) || string.IsNullOrWhiteSpace(settings.ServerBaseUrl)
+                || !File.Exists(settings.SqliteFilePath)) return;
+            await _scanService.PollAsync(settings, _scanCancellation.Token);
         }
         catch (OperationCanceledException) when (_scanCancellation.IsCancellationRequested) { }
-        catch (Exception ex) { error = "操作暂未成功，保留当前记录：" + ex.Message; }
+        catch (Exception ex) { error = "后台处理暂未成功，记录已保留：" + ex.Message; }
         finally
         {
             _scanOperation = false;
-            if (!IsDisposed && !_scanCancellation.IsCancellationRequested)
-            {
-                RefreshScanUi(error);
-                if (_scanInput.Enabled) _scanInput.Focus();
-            }
+            if (!IsDisposed && !_scanCancellation.IsCancellationRequested) RefreshScanUi(error);
         }
     }
 
     private void RefreshScanUi(string? error = null)
     {
-        ElectricCheckScanState? state = _scanService.Current;
-        bool pendingEntry = state?.Status == "PENDING_ENTRY";
-        bool locked = _scanOperation || _scanService.HasActiveScan;
-        _scanInput.Enabled = !_scanOperation && (!_scanService.HasActiveScan || pendingEntry);
+        _scanInput.Enabled = !_scanCancellation.IsCancellationRequested;
         _scanSubmit.Enabled = _scanInput.Enabled;
-        _scanSubmit.Text = pendingEntry ? "重新入站" : "扫码入站";
-        if (pendingEntry && _editableScanId != state!.ScanId)
+        bool locked = !_maintenanceUnlocked || _scanOperation || _scanEnqueueCount > 0 || _scanService.HasActiveScan;
+        ConnectionPanel.Enabled = !locked;
+        _syncPanel.Enabled = !locked;
+        _scanDeviceInfo.Text = "产品扫码    设备：" + (_syncDeviceTextBox.Text.Length == 0 ? "尚未配置" : _syncDeviceTextBox.Text);
+        _scanStateInfo.Text = error ?? "扫码枪以回车结束；可连续扫码。记录按扫码顺序关联检测结果。";
+
+        _scanGrid.Rows.Clear();
+        foreach (ElectricCheckScanState state in _scanService.Entries.OrderBy(s => s.Sequence).TakeLast(200))
         {
-            _scanInput.Text = state.SnCode;
-            _scanInput.SelectAll();
-            _editableScanId = state.ScanId;
+            string status = state.Status switch
+            {
+                "PENDING_ENTRY" => "等待入站", "TESTING" => state.ObservedRecordCount > 0 ? "检测中" : "已入站，待检测", "PENDING_COMPLETE" => "出站重试中",
+                "COMPLETED" => "已出站", "CANCELLED" => "已取消", "REJECTED" => "入站拒绝",
+                "ENTRY_FAILED" => "入站失败", _ => state.Status
+            };
+            string message = state.Message.Replace('\r', ' ').Replace('\n', ' ');
+            int row = _scanGrid.Rows.Add(state.SnCode, state.ScanTime, status, state.FinalResult ?? "—", message);
+            _scanGrid.Rows[row].Cells[4].ToolTipText = state.Message;
         }
-        else if (!pendingEntry && _editableScanId is not null)
-        {
-            _scanInput.Clear();
-            _editableScanId = null;
-        }
-        _syncDeviceTextBox.Enabled = !locked; _syncServerTextBox.Enabled = !locked;
-        _databaseTypeComboBox.Enabled = !locked; _sqliteFileComboBox.Enabled = !locked;
-        _browseSqliteButton.Enabled = !locked; HostText.Enabled = !locked;
-        _scanDeviceInfo.Text = "当前设备：" + _syncDeviceTextBox.Text;
-        string status = state?.Status switch
-        {
-            "PENDING_ENTRY" => _scanOperation ? "正在核对 / 提交入站" : "入站未确认（可修改SN）",
-            "TESTING" => "检测中", "PENDING_COMPLETE" => "自动出站重试中",
-            "COMPLETED" => "已出站", "CANCELLED" => "已取消", _ => "等待扫码"
-        };
-        _scanStateInfo.Text = $"当前 SN：{state?.SnCode ?? "—"}\r\n状态：{status}    检测项目：{state?.ObservedRecordCount ?? 0}\r\n\r\n"
-            + (error ?? state?.Message ?? "请扫描产品条码入站。");
     }
 }
 

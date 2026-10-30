@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
 using c_lan;
@@ -37,7 +37,7 @@ internal static class ElectricCheckScanUiChecks
         Check(!Field<bool>(form, "_maintenanceUnlocked") && !Field<ToolStripMenuItem>(form, "SyncNowMenuItem").Available,
             "tray retransmission must start locked");
         Check(!(bool)Invoke(form, "TryUnlockMaintenance", "wrong")!, "wrong maintenance password must fail");
-        Check((bool)Invoke(form, "TryUnlockMaintenance", "lyc3191")! && server.Enabled,
+        Check((bool)Invoke(form, "TryUnlockMaintenance", "xy123456")! && server.Enabled,
             "correct password must enable maintenance");
         Invoke(form, "ShowSyncResult", new ElectricCheckSyncResult(3, 5, "已同步 3 条"));
         Check(Field<Label>(form, "_collectorLastUpload").Text.Contains("3"), "dashboard must show last successful upload");
@@ -52,7 +52,7 @@ internal static class ElectricCheckScanUiChecks
         ((Task)Invoke(form, "SyncNowAsync", true)!).GetAwaiter().GetResult();
         Check(server.Text == "http://collector.invalid" && device.Text == "DRAFT-DEVICE",
             "background status and blocked actions must preserve configuration drafts");
-        Invoke(form, "TryUnlockMaintenance", "lyc3191");
+        Invoke(form, "TryUnlockMaintenance", "xy123456");
         Invoke(form, "Form1_FormClosing", null, new FormClosingEventArgs(CloseReason.UserClosing, false));
         Check(!Field<bool>(form, "_maintenanceUnlocked"), "closing to tray must require a fresh password");
         form.Hide();
@@ -75,10 +75,10 @@ internal static class ElectricCheckScanUiChecks
             SetField(form, "_syncSettingsStore", settings);
             SetField(form, "_startupService", new WindowsStartupService(root + @"\Run", root + @"\Settings"));
             form.Show();
-            PumpUntil(() => fixture.Server.Rows.Count == 3, "startup background collector must retry and upload SQLite without SN work");
+            PumpUntil(() => fixture.Server.Rows.Count == 1, "startup background collector must retry and upload SQLite without SN work");
             DateTime until = DateTime.UtcNow.AddMilliseconds(1200);
             while (DateTime.UtcNow < until) { Application.DoEvents(); Thread.Sleep(5); }
-            Check(fixture.Server.Paths.Count >= 3 && fixture.Server.Paths.All(p => p == "/openapi/electric-check/records:batch"),
+            Check(fixture.Server.Paths.Count >= 2 && fixture.Server.Paths.All(p => p == "/openapi/electric-check/records:batch"),
                 "startup and subsequent polling must only send raw batch uploads");
             Check(File.ReadAllText(legacyDraft) == "untouched historical draft", "startup must not migrate or consume historical SN drafts");
             Check(!Field<bool>(form, "_maintenanceUnlocked"), "background collection must keep maintenance locked");
@@ -88,7 +88,7 @@ internal static class ElectricCheckScanUiChecks
             Field<CheckBox>(form, "_startupCheckBox").Checked = false;
             Check(Field<CheckBox>(form, "_startupCheckBox").Checked,
                 "locked startup toggle must not change the saved startup preference");
-            Invoke(form, "TryUnlockMaintenance", "lyc3191");
+            Invoke(form, "TryUnlockMaintenance", "xy123456");
             Invoke(form, "ShowFromTray");
             Check(!Field<bool>(form, "_maintenanceUnlocked"), "restoring the tray window must lock maintenance again");
             SetField(form, "_allowClose", true);
